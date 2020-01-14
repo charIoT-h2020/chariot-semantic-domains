@@ -1,0 +1,391 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : MultiBitElement.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of a multi-bit class used in simulation/symbolic execution.
+//   All this stuff is rather defined for host independent code analysis.
+//
+
+#ifndef Analyzer_Scalar_VirtualExact_MultiBitElementTEMPLATE
+#define Analyzer_Scalar_VirtualExact_MultiBitElementTEMPLATE
+
+#include "Analyzer/Scalar/VirtualExact/General/MultiBitElement.h"
+// #include "Analyzer/Scalar/Scalar.hpp"
+
+namespace Analyzer { namespace Scalar { namespace MultiBit { namespace VirtualExact {
+
+#define DefineInitMethodTable(TypeOperation)                                                     \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&TMultiBitElement<TypeBase, TypeImplementation>::apply##TypeOperation);
+
+#define DefineInitOMethodTable(TypeOperation, TypeMethod)                                        \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&TMultiBitElement<TypeBase, TypeImplementation>::apply##TypeMethod);
+
+template <class TypeBase, class TypeImplementation>
+TMultiBitElement<TypeBase, TypeImplementation>::MethodApplyTable::MethodApplyTable() {
+#include "StandardClasses/UndefineNew.h"
+   inherited::clear();
+   DefineInitOMethodTable(ExtendWithZero, Extend)
+   DefineInitOMethodTable(ExtendWithSign, Extend)
+   DefineInitMethodTable(Reduce)
+   DefineInitMethodTable(BitSet)
+   DefineInitMethodTable(Concat)
+   
+   DefineInitMethodTable(CastChar)
+   DefineInitMethodTable(CastInt)
+   DefineInitMethodTable(CastUnsignedInt)
+   DefineInitMethodTable(CastMultiBit)
+   DefineInitMethodTable(CastBit)
+   DefineInitMethodTable(CastShiftBit)
+   DefineInitMethodTable(CastMultiFloat)
+   DefineInitOMethodTable(CastMultiFloatPointer, CastMultiFloat)
+   
+   DefineInitMethodTable(PrevSignedAssign)
+   DefineInitMethodTable(PrevUnsignedAssign)
+   DefineInitMethodTable(NextSignedAssign)
+   DefineInitMethodTable(NextUnsignedAssign)
+   DefineInitMethodTable(PlusSignedAssign)
+   DefineInitMethodTable(PlusUnsignedAssign)
+   DefineInitMethodTable(PlusUnsignedWithSignedAssign)
+   DefineInitOMethodTable(PlusFloatAssign, BinaryFloatAssign)
+   DefineInitMethodTable(MinusSignedAssign)
+   DefineInitMethodTable(MinusUnsignedAssign)
+   DefineInitOMethodTable(MinusFloatAssign, BinaryFloatAssign)
+   
+   DefineInitOMethodTable(CompareLessSigned, CompareSigned)
+   DefineInitOMethodTable(CompareLessOrEqualSigned, CompareSigned)
+   DefineInitOMethodTable(CompareLessUnsigned, CompareUnsigned)
+   DefineInitOMethodTable(CompareLessOrEqualUnsigned, CompareUnsigned)
+   DefineInitOMethodTable(CompareLessFloat, CompareFloat)
+   DefineInitOMethodTable(CompareLessOrEqualFloat, CompareFloat)
+   DefineInitOMethodTable(CompareEqual, CompareUnsigned)
+   DefineInitOMethodTable(CompareEqualFloat, CompareFloat)
+   DefineInitOMethodTable(CompareDifferentFloat, CompareFloat)
+   DefineInitOMethodTable(CompareDifferent, CompareUnsigned)
+   DefineInitOMethodTable(CompareGreaterOrEqualFloat, CompareFloat)
+   DefineInitOMethodTable(CompareGreaterFloat, CompareFloat)
+   DefineInitOMethodTable(CompareGreaterOrEqualUnsigned, CompareUnsigned)
+   DefineInitOMethodTable(CompareGreaterUnsigned, CompareUnsigned)
+   DefineInitOMethodTable(CompareGreaterOrEqualSigned, CompareSigned)
+   DefineInitOMethodTable(CompareGreaterSigned, CompareSigned)
+
+   DefineInitMethodTable(MinSignedAssign)
+   DefineInitMethodTable(MinUnsignedAssign)
+   DefineInitOMethodTable(MinFloatAssign, BinaryFloatAssign)
+   DefineInitMethodTable(MaxSignedAssign)
+   DefineInitMethodTable(MaxUnsignedAssign)
+   DefineInitOMethodTable(MaxFloatAssign, BinaryFloatAssign)
+
+   DefineInitMethodTable(TimesSignedAssign)
+   DefineInitMethodTable(TimesUnsignedAssign)
+   DefineInitOMethodTable(TimesFloatAssign, BinaryFloatAssign)
+   DefineInitMethodTable(DivideSignedAssign)
+   DefineInitMethodTable(DivideUnsignedAssign)
+   DefineInitOMethodTable(DivideFloatAssign, BinaryFloatAssign)
+   DefineInitMethodTable(OppositeSignedAssign)
+   DefineInitOMethodTable(OppositeFloatAssign, UnaryFloatAssign)
+   DefineInitMethodTable(ModuloSignedAssign)
+   DefineInitMethodTable(ModuloUnsignedAssign)
+   DefineInitMethodTable(BitOrAssign)
+   DefineInitMethodTable(BitAndAssign)
+   DefineInitMethodTable(BitExclusiveOrAssign)
+   DefineInitMethodTable(BitNegateAssign)
+   DefineInitMethodTable(LeftShiftAssign)
+   DefineInitMethodTable(LogicalRightShiftAssign)
+   DefineInitMethodTable(ArithmeticRightShiftAssign)
+   DefineInitOMethodTable(LeftRotateAssign, RotateAssign)
+   DefineInitOMethodTable(RightRotateAssign, RotateAssign)
+#include "StandardClasses/DefineNew.h"
+}
+
+#undef DefineInitMethodTable
+#undef DefineInitOMethodTable
+
+#define DefineImplementsUnaryMethod(TypeOperation)                                                 \
+template <class TypeBase, class TypeImplementation>                                                \
+bool                                                                                               \
+TMultiBitElement<TypeBase, TypeImplementation>::apply##TypeOperation(const Operation& operation, EvaluationEnvironment& env) \
+   {  return inheritedImplementation::apply((const TypeOperation##Operation&) operation, env); }
+
+#define DefineImplementsBinaryMethod(TypeOperation)                                                \
+template <class TypeBase, class TypeImplementation>                                                \
+bool                                                                                               \
+TMultiBitElement<TypeBase, TypeImplementation>::apply##TypeOperation(const Operation& operation, EvaluationEnvironment& env) \
+   {  return inheritedImplementation::apply((const TypeOperation##Operation&) operation, (const thisType&) env.getFirstArgument(), env); }
+
+   DefineImplementsUnaryMethod(Extend)
+   DefineImplementsUnaryMethod(Reduce)
+   DefineImplementsBinaryMethod(BitSet)
+   DefineImplementsBinaryMethod(Concat)
+
+template <class TypeBase, class TypeImplementation>
+bool
+TMultiBitElement<TypeBase, TypeImplementation>::applyCastChar(const Operation& aoperation, EvaluationEnvironment& env) {
+   CastMultiBitOperation operation;
+   TypeImplementation castResult(*this);
+   if (Scalar::Integer::Implementation::CharElement::isSigned())
+      operation.setSigned();
+   operation.setSize(8);
+   bool result = inheritedImplementation::apply(operation, env);
+   AssumeCondition(result)
+   env.presult().absorbElement(TypeBase::createCharElement(typename TypeBase::Init()
+      .setInitialValue(Scalar::Integer::Implementation::CharElement((char) castResult.getValue()))));
+   return true;
+}
+
+template <class TypeBase, class TypeImplementation>
+bool
+TMultiBitElement<TypeBase, TypeImplementation>::applyCastInt(const Operation& aoperation, EvaluationEnvironment& env) {
+   CastMultiBitOperation operation;
+   TypeImplementation castResult(*this);
+   operation.setSigned().setSize(Scalar::Integer::Implementation::IntElement::getSize()*8);
+   bool result = inheritedImplementation::apply(operation, env);
+   AssumeCondition(result)
+   env.presult().absorbElement(TypeBase::createIntElement(typename TypeBase::Init()
+      .setInitialValue(Scalar::Integer::Implementation::IntElement((int) castResult.getValue()))));
+   return true;
+}
+
+template <class TypeBase, class TypeImplementation>
+bool
+TMultiBitElement<TypeBase, TypeImplementation>::applyCastUnsignedInt(const Operation& aoperation, EvaluationEnvironment& env) {
+   CastMultiBitOperation operation;
+   TypeImplementation castResult(*this);
+   operation.setSize(Scalar::Integer::Implementation::UnsignedIntElement::getSize()*8);
+   bool result = inheritedImplementation::apply(operation, env);
+   AssumeCondition(result)
+   env.presult().absorbElement(TypeBase::createUnsignedIntElement(typename TypeBase::Init()
+      .setInitialValue(Scalar::Integer::Implementation::UnsignedIntElement((unsigned int) castResult.getValue()))));
+   return true;
+}
+
+DefineImplementsUnaryMethod(CastMultiBit)
+
+template <class TypeBase, class TypeImplementation>
+bool
+TMultiBitElement<TypeBase, TypeImplementation>::applyCastBit(const Operation& operation, EvaluationEnvironment& env) {
+   env.presult().absorbElement(TypeBase::createBitElement(!inheritedImplementation::isZero()));
+   return true;
+}
+
+template <class TypeBase, class TypeImplementation>
+bool
+TMultiBitElement<TypeBase, TypeImplementation>::applyCastShiftBit(const Operation& operation, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const CastShiftBitOperation*>(&operation))
+   int index = ((const CastShiftBitOperation&) operation).getShift();
+   env.presult().absorbElement(TypeBase::createBitElement(inheritedImplementation::cbitArray(index)));
+   return true;
+}
+
+template <class TypeBase, class TypeImplementation>
+bool
+TMultiBitElement<TypeBase, TypeImplementation>::applyCastMultiFloat(const Operation& aoperation, EvaluationEnvironment& env) {
+   typedef Scalar::DReal::TCastMultiFloatOperation<Operation> FloatOperation;
+   AssumeCondition(dynamic_cast<const FloatOperation*>(&aoperation))
+   const FloatOperation& operation = (const FloatOperation&) aoperation;
+   bool isCastPointer = (aoperation.getType() == Operation::TCastMultiFloatPointer);
+   int sizeMantissa = operation.getSizeMantissa();
+   int sizeExponent = operation.getSizeExponent();
+   typedef typename TypeImplementation::MultiFloatImplementation MultiFloatElement;
+   typename MultiFloatElement::ReadParameters params;
+   MultiFloatElement::assignEnvToParams(env, params);
+   MultiFloatElement castResult(sizeMantissa, sizeExponent,
+      isCastPointer ? MultiFloatElement::INPointer : (operation.isSigned()
+         ?  MultiFloatElement::INSigned : MultiFloatElement::INUnsigned), *this, params);
+   castResult.assignParamsToEnv(params, env);
+   typename TypeBase::InitFloat initFloat;
+   initFloat.setSizeMantissa(sizeMantissa).setSizeExponent(sizeExponent).setInitialValue(castResult);
+   env.presult().absorbElement(TypeBase::createMultiFloatElement(initFloat));
+   return true;
+}
+
+template <class TypeBase, class TypeImplementation>
+bool
+TMultiBitElement<TypeBase, TypeImplementation>::applyUnaryFloatAssign(const Operation& aoperation, EvaluationEnvironment& env) {
+   typedef Scalar::DReal::TCastMultiFloatOperation<Operation> FloatOperation;
+   AssumeCondition(dynamic_cast<const FloatOperation*>(&aoperation))
+   const FloatOperation& operation = (const FloatOperation&) aoperation;
+   int sizeMantissa = operation.getSizeMantissa();
+   int sizeExponent = operation.getSizeExponent();
+
+   typedef typename TypeImplementation::MultiFloatImplementation MultiFloatImplementation;
+   typedef Floating::VirtualExact::TMultiFloatElement<TypeBase,
+         typename TypeImplementation::MultiFloatImplementation::InheritedImplementation> MultiFloatElement;
+   typename MultiFloatImplementation::ReadParameters params;
+   MultiFloatImplementation::assignEnvToParams(env, params);
+   MultiFloatImplementation castInitial(sizeMantissa, sizeExponent, MultiFloatImplementation::INPointer, *this, params);
+   typename TypeBase::InitFloat initFloat;
+   initFloat.setSizeMantissa(sizeMantissa).setSizeExponent(sizeExponent).setInitialValue(castInitial);
+   MultiFloatElement castElement(initFloat);
+   castElement.apply(operation.getFloatOperation(), env);
+   AssumeCondition(!env.hasResult())
+   inheritedImplementation::operator=(inheritedImplementation(inheritedImplementation::getSize(),
+      inheritedImplementation::INPointer, castElement.implementation(), params));
+   return true;
+}
+
+template <class TypeBase, class TypeImplementation>
+bool
+TMultiBitElement<TypeBase, TypeImplementation>::applyBinaryFloatAssign(const Operation& aoperation, EvaluationEnvironment& env) {
+   typedef Scalar::DReal::TCastMultiFloatOperation<Operation> FloatOperation;
+   AssumeCondition(dynamic_cast<const FloatOperation*>(&aoperation)
+      && dynamic_cast<const thisType*>(&env.getFirstArgument()))
+   const FloatOperation& operation = (const FloatOperation&) aoperation;
+   int sizeMantissa = operation.getSizeMantissa();
+   int sizeExponent = operation.getSizeExponent();
+
+   typedef typename TypeImplementation::MultiFloatImplementation MultiFloatImplementation;
+   typedef Floating::VirtualExact::TMultiFloatElement<TypeBase,
+         typename TypeImplementation::MultiFloatImplementation::InheritedImplementation> MultiFloatElement;
+   typename MultiFloatImplementation::ReadParameters params;
+   MultiFloatImplementation::assignEnvToParams(env, params);
+   MultiFloatImplementation
+      fstCastInit(sizeMantissa, sizeExponent, MultiFloatImplementation::INPointer, *this, params),
+      sndCastInit(sizeMantissa, sizeExponent, MultiFloatImplementation::INPointer, (const thisType&) env.getFirstArgument(), params);
+   typename TypeBase::InitFloat initFloat;
+   initFloat.setSizeMantissa(sizeMantissa).setSizeExponent(sizeExponent).setInitialValue(fstCastInit);
+   MultiFloatElement fstCast(initFloat);
+   initFloat.setInitialValue(sndCastInit);
+   MultiFloatElement sndCast(initFloat);
+   EvaluationEnvironment copyEnv(env);
+   copyEnv.setFirstArgument(sndCast);
+   fstCast.apply(aoperation.getFloatOperation(), copyEnv);
+   AssumeCondition(!env.hasResult())
+   env.mergeField(copyEnv);
+   inheritedImplementation::operator=(inheritedImplementation(inheritedImplementation::getSize(),
+      inheritedImplementation::INPointer, fstCast.implementation(), params));
+   return true;
+}
+
+DefineImplementsUnaryMethod(PrevSignedAssign)
+DefineImplementsUnaryMethod(PrevUnsignedAssign)
+DefineImplementsUnaryMethod(NextSignedAssign)
+DefineImplementsUnaryMethod(NextUnsignedAssign)
+DefineImplementsBinaryMethod(PlusSignedAssign)
+DefineImplementsBinaryMethod(PlusUnsignedAssign)
+DefineImplementsBinaryMethod(PlusUnsignedWithSignedAssign)
+DefineImplementsBinaryMethod(MinusSignedAssign)
+DefineImplementsBinaryMethod(MinusUnsignedAssign)
+DefineImplementsBinaryMethod(MinSignedAssign)
+DefineImplementsBinaryMethod(MinUnsignedAssign)
+DefineImplementsBinaryMethod(MaxSignedAssign)
+DefineImplementsBinaryMethod(MaxUnsignedAssign)
+
+DefineImplementsBinaryMethod(TimesSignedAssign)
+DefineImplementsBinaryMethod(TimesUnsignedAssign)
+DefineImplementsBinaryMethod(DivideSignedAssign)
+DefineImplementsBinaryMethod(DivideUnsignedAssign)
+DefineImplementsUnaryMethod(OppositeSignedAssign)
+DefineImplementsBinaryMethod(ModuloSignedAssign)
+DefineImplementsBinaryMethod(ModuloUnsignedAssign)
+DefineImplementsBinaryMethod(BitOrAssign)
+DefineImplementsBinaryMethod(BitAndAssign)
+DefineImplementsBinaryMethod(BitExclusiveOrAssign)
+DefineImplementsUnaryMethod(BitNegateAssign)
+DefineImplementsBinaryMethod(LeftShiftAssign)
+DefineImplementsBinaryMethod(LogicalRightShiftAssign)
+DefineImplementsBinaryMethod(ArithmeticRightShiftAssign)
+
+template <class TypeBase, class TypeImplementation>
+bool
+TMultiBitElement<TypeBase, TypeImplementation>::applyRotateAssign(const Operation& operation, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const thisType*>(&env.getFirstArgument()))
+   const thisType& arg = (const thisType&) env.getFirstArgument();
+   if (arg.implementation() >= inheritedImplementation::getSize()) {
+      env.setPositiveOverflow();
+      return true;
+   };
+   if (operation.getType() == Operation::TLeftRotateAssign)
+      return inheritedImplementation::apply((const LeftRotateAssignOperation&) operation,
+         arg.implementation().getValue(), env);
+   else
+      return inheritedImplementation::apply((const RightRotateAssignOperation&) operation,
+         arg.implementation().getValue(), env);
+}
+
+template <class TypeBase, class TypeImplementation>
+bool
+TMultiBitElement<TypeBase, TypeImplementation>::applyCompareSigned(const Operation& operation, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const thisType*>(&env.getFirstArgument()))
+   ComparisonResult compare = inheritedImplementation::compareSigned((const thisType&) env.getFirstArgument());
+   Operation::Type type = operation.getType();
+   bool result = (compare == CRLess)
+      ? ((type < Operation::TCompareEqual) || (type == Operation::TCompareDifferent))
+         : ((compare == CRGreater)
+      ? (type > Operation::TCompareEqual) : ((compare == CREqual)
+      ? (type == Operation::TCompareEqual) : false));
+   AssumeCondition(compare != CRNonComparable)
+   env.presult().absorbElement(TypeBase::createBitElement(result));
+   return true;
+}
+
+template <class TypeBase, class TypeImplementation>
+bool
+TMultiBitElement<TypeBase, TypeImplementation>::applyCompareUnsigned(const Operation& operation, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const thisType*>(&env.getFirstArgument()))
+   ComparisonResult compare = inheritedImplementation::compareUnsigned((const thisType&) env.getFirstArgument());
+   Operation::Type type = operation.getType();
+   bool result = (compare == CRLess)
+      ? ((type < Operation::TCompareEqual) || (type == Operation::TCompareDifferent))
+         : ((compare == CRGreater)
+      ? (type > Operation::TCompareEqual) : ((compare == CREqual)
+      ? (type == Operation::TCompareEqual) : false));
+   AssumeCondition(compare != CRNonComparable)
+   env.presult().absorbElement(TypeBase::createBitElement(result));
+   return true;
+}
+
+template <class TypeBase, class TypeImplementation>
+bool
+TMultiBitElement<TypeBase, TypeImplementation>::applyCompareFloat(const Operation& aoperation, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const thisType*>(&env.getFirstArgument()))
+
+   typedef DReal::TCastMultiFloatOperation<Operation> FloatOperation;
+   AssumeCondition(dynamic_cast<const FloatOperation*>(&aoperation)
+      && dynamic_cast<const thisType*>(&env.getFirstArgument()))
+   const FloatOperation& operation = (const FloatOperation&) aoperation;
+   int sizeMantissa = operation.getSizeMantissa();
+   int sizeExponent = operation.getSizeExponent();
+
+   typedef typename TypeImplementation::MultiFloatImplementation MultiFloatImplementation;
+   typedef Floating::VirtualExact::TMultiFloatElement<TypeBase,
+         typename TypeImplementation::MultiFloatImplementation::InheritedImplementation> MultiFloatElement;
+   typename MultiFloatImplementation::ReadParameters params;
+   MultiFloatImplementation::assignEnvToParams(env, params);
+   MultiFloatImplementation
+      fstCastInit(sizeMantissa, sizeExponent, MultiFloatImplementation::INPointer, *this, params),
+      sndCastInit(sizeMantissa, sizeExponent, MultiFloatImplementation::INPointer, (const thisType&) env.getFirstArgument(), params);
+   typename TypeBase::InitFloat initFloat;
+   initFloat.setSizeMantissa(sizeMantissa).setSizeExponent(sizeExponent).setInitialValue(fstCastInit);
+   MultiFloatElement fstCast(initFloat);
+   initFloat.setInitialValue(sndCastInit);
+   MultiFloatElement sndCast(initFloat);
+   EvaluationEnvironment copyEnv(env);
+   copyEnv.setFirstArgument(sndCast);
+   fstCast.apply(operation.getFloatOperation(), copyEnv);
+   env.mergeField(copyEnv);
+   env.presult() = copyEnv.presult();
+   return true;
+}
+
+#undef DefineImplementsUnaryMethod
+#undef DefineImplementsBinaryMethod
+
+template <class TypeBase, class TypeImplementation>
+typename TMultiBitElement<TypeBase, TypeImplementation>::MethodApplyTable TMultiBitElement<TypeBase, TypeImplementation>::matMethodTable;
+
+template <class TypeBase, class TypeImplementation>
+TypeBase*
+TMultiBitElement<TypeBase, TypeImplementation>::_createMultiFloatElement(const typename TypeBase::InitFloat& init) const
+   {  typedef Floating::VirtualExact::TMultiFloatElement<TypeBase,
+            typename TypeImplementation::MultiFloatImplementation::InheritedImplementation> MultiFloatElement;
+      return new MultiFloatElement(init);
+   }
+
+}}}} // end of namespace Analyzer::Scalar::MultiBit::VirtualExact
+
+#endif // Analyzer_Interpretation_Scalar_VirtualExact_MultiBitElementTEMPLATE

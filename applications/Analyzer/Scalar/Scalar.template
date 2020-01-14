@@ -1,0 +1,26 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements
+// File      : Scalar.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of all the available scalar elements.
+//
+
+#ifndef Analyzer_Scalar_ScalarTemplate
+#define Analyzer_Scalar_ScalarTemplate
+
+#include "Analyzer/Scalar/Implementation/General/MultiBitElement.template"
+#include "Analyzer/Scalar/Implementation/General/MultiFloatElement.template"
+#include "Analyzer/Scalar/VirtualExact/General/MultiBitElement.template"
+#include "Analyzer/Scalar/VirtualExact/General/MultiFloatElement.template"
+#include "Analyzer/Scalar/Approximate/VirtualElement.template"
+#include "Analyzer/Scalar/Approximate/General/ConstantMultiBit.template"
+#include "Analyzer/Scalar/Approximate/General/ConstantMultiFloat.template"
+#include "Analyzer/Scalar/Approximate/BitFieldMask.template"
+
+#endif // Analyzer_Scalar_ScalarTemplate
+

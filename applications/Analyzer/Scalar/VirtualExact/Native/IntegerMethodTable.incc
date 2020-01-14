@@ -1,0 +1,64 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : IntegerMethodTable.incc
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of the virtual method table for the class IntElement
+//     representing the compilation constants of type int and the
+//     scalar int elements used in simulation/symbolic execution.
+//   All this stuff is rather defined for source code analysis.
+//
+
+/* DefineTypeObject                  : Type of the element                                   */
+
+template <class TypeBase>
+DefineTypeObject<TypeBase>::MethodApplyTable::MethodApplyTable() {
+#include "StandardClasses/UndefineNew.h"
+   inherited::clear();
+   DefineInitMethodTable(CastChar)
+   DefineInitMethodTable(CastSignedChar)
+   DefineInitMethodTable(CastUnsignedChar)
+   DefineInitMethodTable(CastShort)
+   DefineInitMethodTable(CastUnsignedShort)
+   DefineInitMethodTable(CastInt)
+   DefineInitMethodTable(CastUnsignedInt)
+   DefineInitMethodTable(CastLong)
+   DefineInitMethodTable(CastUnsignedLong)
+   DefineInitMethodTable(CastFloat)
+   DefineInitMethodTable(CastDouble)
+   DefineInitMethodTable(CastLongDouble)
+
+   DefineInitOMethodTable(CompareLess, Compare)
+   DefineInitOMethodTable(CompareLessOrEqual, Compare)
+   DefineInitOMethodTable(CompareEqual, Compare)
+   DefineInitOMethodTable(CompareDifferent, Compare)
+   DefineInitOMethodTable(CompareGreaterOrEqual, Compare)
+   DefineInitOMethodTable(CompareGreater, Compare)
+
+   DefineInitMethodTable(MinAssign)
+   DefineInitMethodTable(MaxAssign)
+   
+   DefineInitMethodTable(PrevAssign)
+   DefineInitMethodTable(NextAssign)
+   DefineInitMethodTable(PlusAssign)
+   DefineInitMethodTable(MinusAssign)
+   DefineInitMethodTable(TimesAssign)
+   DefineInitMethodTable(DivideAssign)
+   DefineInitMethodTable(OppositeAssign)
+   DefineInitMethodTable(ModuloAssign)
+   DefineInitMethodTable(BitOrAssign)
+   DefineInitMethodTable(BitAndAssign)
+   DefineInitMethodTable(BitExclusiveOrAssign)
+   DefineInitMethodTable(BitNegateAssign)
+   DefineInitOMethodTable(LeftShiftAssign, LeftShiftAssignIntElement)
+   DefineInitOMethodTable(RightShiftAssign, LeftShiftAssignIntElement)
+#include "StandardClasses/DefineNew.h"
+}
+
+template <class TypeBase>
+typename DefineTypeObject<TypeBase>::MethodApplyTable DefineTypeObject<TypeBase>::matMethodTable;
+

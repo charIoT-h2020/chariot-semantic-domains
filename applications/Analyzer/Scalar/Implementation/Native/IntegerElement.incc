@@ -1,0 +1,411 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : implementation of scalar elements specific to source code analysis
+// File      : IntegerElement.incc
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of the integer classes
+//
+
+/* DefineTypeIntegerElement      : name of the class                             */
+/* DefineTypeImplementation      : type of the implementation: long, int, char   */
+/* DefineTypeRealImplementation  : actual type for the simulated implementation  */
+/* DefineTypeCastAssign          : defines the compatible types                  */
+/* DefineTypeUnsigned            : unsigned numeric class => DefineTypeMin=0     */
+/* DefineTypeMaxGreaterAbsMin    : if signed, say if |Max| > |Min|               */
+/* DefineTypeMin                 : numeric minimal value                         */
+/* DefineTypeMax                 : numeric maximal value                         */
+/* DefineTypeNeedBytes           : if defined, require additional bits to        */
+/*                                 implement the operations.                     */
+
+#define DefineIntegerAssign(TypeInteger)                                                         \
+void                                                                                             \
+DefineTypeIntegerElement::assign(const TypeInteger& source, EvaluationEnvironment& env) {        \
+   if (((TypeInteger::SimulatedType) (DefineTypeRealImplementation) source.getElement()) != source.getElement()) {\
+      if (source.getElement() > 0)                                                               \
+         env.setPositiveOverflow().setErrorEmpty();                                              \
+      else                                                                                       \
+         env.setNegativeOverflow().setErrorEmpty();                                              \
+   };                                                                                            \
+   uElement = (DefineTypeRealImplementation) source.getElement();                                \
+}
+
+DefineTypeCastAssign
+
+#undef DefineIntegerAssign
+
+int
+DefineTypeIntegerElement::getSize()
+   {  return sizeof(DefineTypeRealImplementation); }
+
+bool
+DefineTypeIntegerElement::isSigned()
+#ifdef DefineTypeUnsigned
+   {  return false; }
+#else
+   {  return true; }
+#endif // DefineTypeUnsigned
+
+DefineTypeRealImplementation
+DefineTypeIntegerElement::getMax() { return DefineTypeMax; }
+
+DefineTypeRealImplementation
+DefineTypeIntegerElement::getMin() { return DefineTypeMin; }
+
+/* define the operation in place */
+
+void
+DefineTypeIntegerElement::apply(const PrevAssignOperation&, EvaluationEnvironment& env) {
+   if (uElement == DefineTypeMin)
+      env.setNegativeOverflow().setErrorEmpty();
+   uElement = ((DefineTypeRealImplementation) uElement) - 1;
+}
+
+void
+DefineTypeIntegerElement::apply(const NextAssignOperation&, EvaluationEnvironment& env) {
+   if (uElement == DefineTypeMax)
+      env.setPositiveOverflow().setErrorEmpty();
+   uElement = ((DefineTypeRealImplementation) uElement) + 1;
+}
+
+void
+DefineTypeIntegerElement::apply(const PlusAssignOperation&,
+   const DefineTypeIntegerElement& source, EvaluationEnvironment& env) {
+#ifndef DefineTypeNeedBytes
+   uElement += source.uElement;
+   if (uElement > DefineTypeMax)
+      env.setPositiveOverflow().setErrorEmpty();
+   else if (uElement < DefineTypeMin)
+      env.setNegativeOverflow().setErrorEmpty();
+   uElement = (DefineTypeRealImplementation) uElement;
+#else // DefineTypeNeedBytes
+#ifndef DefineTypeUnsigned
+   if ((uElement >= 0) && (source.uElement >= 0)) {
+#endif // DefineTypeUnsigned
+      // x + y = (x/2 + y/2)*2 + x%2 + y%2
+      if (((uElement/2 + source.uElement/2) > DefineTypeMax/2)
+          || ((((uElement/2 + source.uElement/2) == DefineTypeMax/2)
+               && ((uElement % 2) + (source.uElement % 2) > (DefineTypeMax % 2)))))
+         env.setPositiveOverflow().setErrorEmpty();
+#ifndef DefineTypeUnsigned
+   }
+   else if (((uElement < 0) && (source.uElement < 0)) 
+      && (((uElement/2 + source.uElement/2) < DefineTypeMin/2)
+          || (((uElement/2 + source.uElement/2) == DefineTypeMin/2)
+              && ((-(uElement % 2)) + (-(source.uElement % 2)) > (-(DefineTypeMin % 2))))))
+      env.setNegativeOverflow().setErrorEmpty();
+#endif // !DefineTypeUnsigned
+   uElement = ((DefineTypeRealImplementation) uElement)
+      + ((DefineTypeRealImplementation) source.uElement);
+#endif // DefineTypeNeedBytes
+}
+
+void
+DefineTypeIntegerElement::apply(const MinusAssignOperation&,
+   const DefineTypeIntegerElement& source, EvaluationEnvironment& env) {
+#ifndef DefineTypeNeedBytes
+   uElement -= source.uElement;
+   if (uElement > DefineTypeMax)
+      env.setPositiveOverflow().setErrorEmpty();
+   else if (uElement < DefineTypeMin)
+      env.setNegativeOverflow().setErrorEmpty();
+   uElement = (DefineTypeRealImplementation) uElement;
+#else // DefineTypeNeedBytes
+   #ifndef DefineTypeUnsigned
+   if ((uElement >= 0) && (source.uElement <= 0)) {
+      // x + y = (x/2 + y/2)*2 + x%2 + y%2
+      if (((uElement/2 - source.uElement/2) > DefineTypeMax/2)
+          || (((uElement/2 - source.uElement/2) == DefineTypeMax/2)
+              && ((uElement % 2) + (-source.uElement % 2) > (DefineTypeMax % 2))))
+                  env.setPositiveOverflow().setErrorEmpty();
+   }
+   else if ((uElement <= 0) && (source.uElement >= 0)) {
+      if (((uElement/2 - source.uElement/2) < DefineTypeMin/2)
+          || (((uElement/2 - source.uElement/2) == DefineTypeMin/2)
+              && ((-uElement % 2) + (source.uElement % 2) > (-(DefineTypeMin % 2)))))
+         env.setNegativeOverflow().setErrorEmpty();
+   }
+   else  { // same signs
+      if (((uElement > 0) && (uElement < source.uElement))
+         || ((uElement < 0) && (uElement > source.uElement))) { // change the sign of uElement
+      #ifdef DefineTypeMaxGreaterAbsMin
+         if ((uElement > 0) && (source.uElement-uElement > -DefineTypeMin))
+            env.setNegativeOverflow().setErrorEmpty();
+      #else
+         if ((uElement < 0) && (source.uElement-uElement < -DefineTypeMax))
+            env.setPositiveOverflow().setErrorEmpty();
+      #endif
+      };
+   };
+   #else  // DefineTypeUnsigned
+      if (uElement < source.uElement)
+         env.setNegativeOverflow().setErrorEmpty();
+   #endif // DefineTypeUnsigned
+   uElement = ((DefineTypeRealImplementation) uElement)
+      - ((DefineTypeRealImplementation) source.uElement);
+#endif // DefineTypeNeedBytes
+}
+
+void
+DefineTypeIntegerElement::apply(const OppositeAssignOperation&, EvaluationEnvironment& env) {
+#ifdef DefineTypeUnsigned
+   env.setNegativeOverflow().setErrorEmpty();
+#else // !DefineTypeUnsigned
+#ifdef DefineTypeMaxGreaterAbsMin
+   if ((uElement > 0) && (uElement > -DefineTypeMin))
+      env.setNegativeOverflow().setErrorEmpty();
+#else // !DefineTypeMaxGreaterAbsMin
+   if ((uElement < 0) && (uElement < -DefineTypeMax))
+      env.setPositiveOverflow().setErrorEmpty();
+#endif // !DefineTypeMaxGreaterAbsMin
+#endif // !DefineTypeUnsigned
+   uElement = (DefineTypeRealImplementation) (0-uElement);
+}
+
+void
+DefineTypeIntegerElement::apply(const TimesAssignOperation&,
+   const DefineTypeIntegerElement& source, EvaluationEnvironment& env) {
+#ifndef DefineTypeNeedBytes
+   uElement *= source.uElement;
+   if (uElement > DefineTypeMax)
+      env.setPositiveOverflow().setErrorEmpty();
+   else if (uElement < DefineTypeMin)
+      env.setNegativeOverflow().setErrorEmpty();
+   uElement = (DefineTypeRealImplementation) uElement;
+#else // DefineTypeNeedBytes
+#ifndef __clang__
+   if (source.uElement == 0) {
+      uElement = 0;
+      return;
+   };
+   DefineTypeImplementation result = (DefineTypeRealImplementation) (uElement*source.uElement);
+
+#ifndef DefineTypeUnsigned
+   if ((uElement >= 0) && (source.uElement > 0)) {
+#endif // DefineTypeUnsigned
+      if (result / source.uElement < uElement)
+         env.setPositiveOverflow().setErrorEmpty();
+#ifndef DefineTypeUnsigned
+   }
+   else if (source.uElement > 0) { // uElement < 0
+      if (result / source.uElement > uElement)
+         env.setNegativeOverflow().setErrorEmpty();
+   }
+   else if (uElement >= 0) { // source.uElement < 0, change the sign of uElement
+#ifdef DefineTypeMaxGreaterAbsMin
+      if ((-result) / (-source.uElement) < uElement)
+#else  // !DefineTypeMaxGreaterAbsMin
+      if ((-result) / source.uElement > (-uElement))
+#endif // !DefineTypeMaxGreaterAbsMin
+         env.setNegativeOverflow().setErrorEmpty();
+   }
+   else { // source.uElement < 0, uElement < 0
+#ifdef DefineTypeMaxGreaterAbsMin
+      if (result / (-source.uElement) < (-uElement))
+#else  // !DefineTypeMaxGreaterAbsMin
+      if (result / source.uElement > uElement)
+#endif // !DefineTypeMaxGreaterAbsMin
+         env.setPositiveOverflow().setErrorEmpty();
+   };
+#endif // !DefineTypeUnsigned
+   uElement = (DefineTypeRealImplementation) result;
+
+#else // __clang__
+   if (uElement == 0 || source.uElement == 0) {
+      uElement = 0;
+      return;
+   };
+   if (source.uElement == 1)
+      return;
+   if (uElement == 1) {
+      uElement = source.uElement;
+      return;
+   };
+   DefineTypeImplementation thisElement = uElement, sourceElement = source.uElement;
+#ifdef DefineTypeUnsigned
+   bool isThisPositive = true, isSourcePositive = true;
+   uElement = (DefineTypeRealImplementation) (uElement*source.uElement);
+#else
+   bool isThisPositive = (uElement >= 0), isSourcePositive = (source.uElement >= 0);
+   uElement = (DefineTypeRealImplementation) (uElement*source.uElement);
+   if (!isThisPositive)
+      thisElement = -thisElement;
+   if (!isSourcePositive)
+      sourceElement = -sourceElement;
+   if (thisElement < 0 || sourceElement < 0) {
+      if (isThisPositive == isSourcePositive)
+         env.setPositiveOverflow().setErrorEmpty();
+      else
+         env.setNegativeOverflow().setErrorEmpty();
+      return;
+   };
+#endif // DefineTypeUnsigned
+   DefineTypeImplementation highThis = thisElement >> (sizeof(DefineTypeImplementation)*4);
+   DefineTypeImplementation highSource = sourceElement >> (sizeof(DefineTypeImplementation)*4);
+   if (highThis != 0 && highSource != 0) {
+      if (isThisPositive == isSourcePositive)
+         env.setPositiveOverflow().setErrorEmpty();
+      else
+         env.setNegativeOverflow().setErrorEmpty();
+      return;
+   };
+#ifdef DefineTypeUnsigned
+   DefineTypeImplementation lowThis = thisElement & ~(~((DefineTypeImplementation) 0) << (sizeof(DefineTypeImplementation)*4));
+   DefineTypeImplementation lowSource = sourceElement & ~(~((DefineTypeImplementation) 0) << (sizeof(DefineTypeImplementation)*4));
+   DefineTypeImplementation first = lowThis * highSource;
+   DefineTypeImplementation second = lowSource * highThis;
+   DefineTypeImplementation third = (lowSource * lowThis) >> (sizeof(DefineTypeImplementation)*4);
+   if ((first + second + third) > ~(~((DefineTypeImplementation) 0) << (sizeof(DefineTypeImplementation)*4)))
+      env.setPositiveOverflow().setErrorEmpty();
+#else
+   if (isThisPositive == isSourcePositive) {
+      if (uElement <= 0)
+         env.setPositiveOverflow().setErrorEmpty();
+   }
+   else {
+      if (uElement >= 0)
+         env.setNegativeOverflow().setErrorEmpty();
+   };
+#endif // DefineTypeUnsigned
+
+#endif // __clang__
+
+#endif // DefineTypeNeedBytes
+}
+
+void
+DefineTypeIntegerElement::apply(const DivideAssignOperation&,
+   const DefineTypeIntegerElement& source, EvaluationEnvironment& env) {
+   if (source.uElement == 0) {
+      env.setDivisionByZero();
+      env.setEmpty();
+      return;
+   };
+#if (!defined(DefineTypeNeedBytes) || defined(DefineTypeUnsigned))
+   uElement /= source.uElement;
+   if (uElement > DefineTypeMax)
+      env.setPositiveOverflow().setErrorEmpty();
+   else if (uElement < DefineTypeMin)
+      env.setNegativeOverflow().setErrorEmpty();
+   uElement = (DefineTypeRealImplementation) uElement;
+#else  // DefineTypeNeedBytes && !DefineTypeUnsigned
+   if (source.uElement < 0) {
+#ifdef DefineTypeMaxGreaterAbsMin
+      if ((uElement > 0) && ((uElement) / (-source.uElement) > (-DefineTypeMin)))
+         env.setNegativeOverflow().setErrorEmpty();
+#else  // !DefineTypeMaxGreaterAbsMin
+      if ((uElement < 0) && ((uElement) / (-source.uElement) < (-DefineTypeMax)))
+         env.setPositiveOverflow().setErrorEmpty();
+#endif // !DefineTypeMaxGreaterAbsMin
+   };
+   uElement = ((DefineTypeRealImplementation) uElement)
+      / ((DefineTypeRealImplementation) source.uElement);
+#endif // DefineTypeNeedBytes || DefineTypeUnsigned
+}
+
+void
+DefineTypeIntegerElement::apply(const ModuloAssignOperation&,
+   const DefineTypeIntegerElement& source, EvaluationEnvironment& env) {
+   if (source.uElement == 0) {
+      env.setDivisionByZero();
+      env.setEmpty();
+      return;
+   };
+#if (!defined(DefineTypeNeedBytes) || defined(DefineTypeUnsigned))
+   uElement %= source.uElement;
+   if (uElement > DefineTypeMax)
+      env.setPositiveOverflow().setErrorEmpty();
+   else if (uElement < DefineTypeMin)
+      env.setNegativeOverflow().setErrorEmpty();
+   uElement = (DefineTypeRealImplementation) uElement;
+#else  // DefineTypeNeedBytes && !DefineTypeUnsigned
+   if (source.uElement < 0) {
+#ifdef DefineTypeMaxGreaterAbsMin
+      if ((uElement > 0) && ((uElement) / (-source.uElement) > (-DefineTypeMin)))
+         env.setNegativeOverflow().setErrorEmpty();
+#else  // !DefineTypeMaxGreaterAbsMin
+      if ((uElement < 0) && ((uElement) / (-source.uElement) < (-DefineTypeMax)))
+         env.setPositiveOverflow().setErrorEmpty();
+#endif // !DefineTypeMaxGreaterAbsMin
+   };
+   uElement = ((DefineTypeRealImplementation) uElement)
+      % ((DefineTypeRealImplementation) source.uElement);
+#endif // DefineTypeNeedBytes || DefineTypeUnsigned
+}
+
+// integer methods
+
+void
+DefineTypeIntegerElement::apply(const LeftShiftAssignOperation&, int value,
+      EvaluationEnvironment& env) {
+   if (value == 0)
+      return;
+   if (value < 0)
+      env.setPositiveOverflow().setErrorEmpty();
+   if (value >= getSize()*8) {
+      if (uElement)
+#ifdef DefineTypeUnsigned
+         env.setPositiveOverflow().setErrorEmpty();
+#else  // !DefineTypeUnsigned
+         env.setNegativeOverflow().setErrorEmpty();
+#endif // !DefineTypeUnsigned
+      uElement = (((DefineTypeRealImplementation) uElement) << value);
+      return;
+   };
+
+   DefineTypeRealImplementation mask
+      = ~(((DefineTypeRealImplementation) 1) << (getSize()*8-1)) >> (value-1);
+   if (uElement & ~mask)
+#ifdef DefineTypeUnsigned
+      env.setPositiveOverflow().setErrorEmpty();
+#else  // !DefineTypeUnsigned
+      env.setNegativeOverflow().setErrorEmpty();
+#endif // !DefineTypeUnsigned
+   uElement = (((DefineTypeRealImplementation) uElement) << value);
+}
+
+void
+DefineTypeIntegerElement::apply(const RightShiftAssignOperation&, int value,
+      EvaluationEnvironment& env) {
+   if (value < 0)
+      env.setPositiveOverflow().setErrorEmpty();
+   uElement = (((DefineTypeRealImplementation) uElement) >> value);
+}
+
+void
+DefineTypeIntegerElement::apply(const LeftRotateAssignOperation&, int value,
+      EvaluationEnvironment& env) {
+   if (value == 0)
+      return;
+   if (value < 0)
+      env.setPositiveOverflow().setErrorEmpty();
+   if (value >= getSize()*8)
+      return;
+
+   DefineTypeRealImplementation mask
+      = ~(~(((DefineTypeRealImplementation) 1) << (getSize()*8-1)) >> (value-1)) & uElement;
+   uElement = (((DefineTypeRealImplementation) uElement) << value);
+   mask >>= (getSize()*8 - value);
+   uElement |= (mask & ~(~(((DefineTypeRealImplementation) 1) << (getSize()*8-1)) >> (getSize()*8-value)));
+}
+
+void
+DefineTypeIntegerElement::apply(const RightRotateAssignOperation&, int value,
+      EvaluationEnvironment& env) {
+   if (value == 0)
+      return;
+   if (value < 0)
+      env.setPositiveOverflow().setErrorEmpty();
+   if (value >= getSize()*8)
+      return;
+
+   DefineTypeRealImplementation mask
+      = ~(~(((DefineTypeRealImplementation) 1) << (getSize()*8-1)) >> (getSize()*8-value)) & uElement;
+   uElement = (((DefineTypeRealImplementation) uElement) >> value);
+   mask <<= (getSize()*8 - value);
+   uElement |= mask;
+}
+

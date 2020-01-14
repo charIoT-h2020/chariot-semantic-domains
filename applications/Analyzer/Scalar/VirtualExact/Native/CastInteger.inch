@@ -1,0 +1,51 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : CastInteger.inch
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Definition of the cast methods between different integer classes
+//     that are used by the compilation constants and by the scalar elements
+//     in simulation/symbolic execution.
+//   All this stuff is rather defined for source code analysis.
+//
+
+   void assign(const Integer::VirtualExact::TCharElement<TypeBase>& source, EvaluationEnvironment& env);
+   void assign(const Integer::VirtualExact::TSignedCharElement<TypeBase>& source, EvaluationEnvironment& env);
+   void assign(const Integer::VirtualExact::TUnsignedCharElement<TypeBase>& source, EvaluationEnvironment& env);
+   void assign(const Integer::VirtualExact::TShortElement<TypeBase>& source, EvaluationEnvironment& env);
+   void assign(const Integer::VirtualExact::TUnsignedShortElement<TypeBase>& source, EvaluationEnvironment& env);
+   void assign(const Integer::VirtualExact::TIntElement<TypeBase>& source, EvaluationEnvironment& env);
+   void assign(const Integer::VirtualExact::TUnsignedIntElement<TypeBase>& source, EvaluationEnvironment& env);
+   void assign(const Integer::VirtualExact::TLongElement<TypeBase>& source, EvaluationEnvironment& env);
+   void assign(const Integer::VirtualExact::TUnsignedLongElement<TypeBase>& source, EvaluationEnvironment& env);
+   void assign(const Floating::VirtualExact::TFloatElement<TypeBase>& source, EvaluationEnvironment& env);
+   void assign(const Floating::VirtualExact::TDoubleElement<TypeBase>& source, EvaluationEnvironment& env);
+   void assign(const Floating::VirtualExact::TLongDoubleElement<TypeBase>& source, EvaluationEnvironment& env);
+
+   DefineDeclareBinaryMethod(CastChar)
+   DefineDeclareBinaryMethod(CastSignedChar)
+   DefineDeclareBinaryMethod(CastUnsignedChar)
+   DefineDeclareBinaryMethod(CastShort)
+   DefineDeclareBinaryMethod(CastUnsignedShort)
+   DefineDeclareBinaryMethod(CastInt)
+   DefineDeclareBinaryMethod(CastUnsignedInt)
+   DefineDeclareBinaryMethod(CastLong)
+   DefineDeclareBinaryMethod(CastUnsignedLong)
+   DefineDeclareBinaryMethod(CastFloat)
+   DefineDeclareBinaryMethod(CastDouble)
+   DefineDeclareBinaryMethod(CastLongDouble)
+
+   static const thisType& getSameArgument(EvaluationEnvironment& env)
+      {  AssumeCondition(dynamic_cast<thisType*>(&env.getFirstArgument()))
+         return ((const thisType&) env.getFirstArgument());
+      }
+
+   DefineDeclareBinaryMethod(Compare)
+
+   DefineDeclareBinaryMethod(MinAssign)
+   DefineDeclareBinaryMethod(MaxAssign)
+

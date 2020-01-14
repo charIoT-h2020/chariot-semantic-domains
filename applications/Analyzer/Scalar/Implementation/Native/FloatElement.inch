@@ -1,0 +1,93 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : implementation of scalar elements specific to source code analysis
+// File      : FloatElement.inch
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Definition of the floating point classes
+//
+
+/* DefineTypeFloatElement        : name of the floating point class                        */
+/* DefineTypeImplementation      : type of the implementation: float, double               */
+/* DefineTypeCastAssign          : defines the compatible types                            */
+/* DefineTypeInherited           : inherited base class                                    */
+/* DefineTypeLibSupported        : if defined the library functions are natively supported */
+
+#define DefineFloatAssign(TypeFloat)                                                         \
+   void assign(const TypeFloat& source, EvaluationEnvironment& env);
+
+class DefineTypeFloatElement : public DefineTypeInherited {
+  private:
+   typedef DefineTypeInherited inherited;
+   typedef DefineTypeFloatElement thisType;
+   DefineTypeImplementation dElement;
+
+  protected:
+   virtual ComparisonResult _compare(const EnhancedObject& asource) const override
+      {  ComparisonResult result = inherited::_compare(asource);
+         return (result == CREqual)
+            ? tcompare(dElement, ((const thisType&) asource).dElement)
+            : result;
+      }
+
+   void _write(STG::IOObject::OSBase& out, const STG::IOObject::FormatParameters& params) const;
+
+   class Utilities;
+   void assign(DefineTypeImplementation value) { dElement = value; }
+
+  public:
+   DefineTypeFloatElement(DefineTypeImplementation value) : dElement(value) { setConstantDouble(); }
+   DefineTypeFloatElement(const DefineTypeFloatElement& source) = default;
+   thisType& operator=(const thisType&) = default;
+   DefineCopy(DefineTypeFloatElement)
+   DDefineAssign(DefineTypeFloatElement)
+   DefineTypeCastAssign
+
+   static int getSizeMantissa();
+   static int getSizeExponent();
+
+   typedef DefineTypeImplementation SimulatedType;
+   const SimulatedType& getElement() const { return dElement; }
+   void setElement(SimulatedType element) { dElement = element; }
+   int getExponent() const;
+   static SimulatedType getMin();
+   static SimulatedType getMax();
+   SimulatedType getEpsilon() const;
+
+   void apply(const PlusAssignOperation&, const thisType& source, EvaluationEnvironment& env);
+   void apply(const MinusAssignOperation&, const thisType& source, EvaluationEnvironment& env);
+   void apply(const OppositeAssignOperation&, EvaluationEnvironment& env);
+   void apply(const AbsAssignOperation&, EvaluationEnvironment& env);
+   void apply(const TimesAssignOperation&, const thisType& source, EvaluationEnvironment& env);
+   void apply(const DivideAssignOperation&, const thisType& source, EvaluationEnvironment& env);
+
+#ifdef DefineTypeLibSupported
+   SimulatedType apply(const AcosOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const AsinOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const AtanOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const Atan2Operation&, const thisType& source, EvaluationEnvironment& env) const;
+   SimulatedType apply(const CeilOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const CosOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const CoshOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const ExpOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const FabsOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const FloorOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const FmodOperation&, const thisType& source, EvaluationEnvironment& env) const;
+   SimulatedType apply(const FrexpOperation&, int& expResult, EvaluationEnvironment& env) const;
+   SimulatedType apply(const LdexpOperation&, int exp, EvaluationEnvironment& env) const;
+   SimulatedType apply(const LogOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const Log10Operation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const ModfOperation&, thisType& source, EvaluationEnvironment& env) const;
+   SimulatedType apply(const PowOperation&, const thisType& source, EvaluationEnvironment& env) const;
+   SimulatedType apply(const SinOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const SinhOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const SqrtOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const TanOperation&, EvaluationEnvironment& env) const;
+   SimulatedType apply(const TanhOperation&, EvaluationEnvironment& env) const;
+#endif
+};
+
+#undef DefineFloatAssign

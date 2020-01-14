@@ -1,0 +1,1306 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : approximate native scalar elements
+// File      : ConstantIntegerElement.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of a class of integer elements that rely on native host implementation.
+//   All this stuff is rather defined for source code analysis.
+//
+
+#include "Analyzer/Scalar/Approximate/Native/ConstantIntegerElement.h"
+// #include "Analyzer/Interpretation/Scalar/Scalar.hpp"
+
+namespace Analyzer {}
+
+#include "Analyzer/Scalar/Approximate/VirtualElement.template"
+#include "Analyzer/Scalar/Approximate/BitFieldMask.template"
+
+namespace Analyzer { namespace Scalar { namespace Integer { namespace Approximate {
+
+namespace Details {
+
+template <class TypeDomainTraits> using GenericBinaryConstraintMethod = Scalar::Approximate::Details::GenericBinaryConstraintMethod<TypeDomainTraits>;
+template <class TypeDomainTraits> using GenericAndConstantResultBinaryConstraintMethod = Scalar::Approximate::Details::GenericAndConstantResultBinaryConstraintMethod<TypeDomainTraits>;
+template <class TypeDomainTraits> using GenericAndConstantResultSourceBinaryConstraintMethod = Scalar::Approximate::Details::GenericAndConstantResultSourceBinaryConstraintMethod<TypeDomainTraits>;
+template <class TypeDomainTraits> using MethodQuerySecondDecisionNode = Scalar::Approximate::Details::MethodQuerySecondDecisionNode<TypeDomainTraits>;
+
+} // end of namespace Details
+
+/*****************************************************/
+/* Implementation of the template class TBaseElement */
+/*****************************************************/
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::queryInverseCastOperation(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   typename TypeBase::QueryOperation::InverseCastOperationEnvironment& env = (typename TypeBase::QueryOperation::InverseCastOperationEnvironment&) aenv;
+   auto type = ((const Operation&) env.reference()).getType();
+   bool result = true;
+   if ((type >= Operation::TCastChar) && (type <= Operation::TCastUnsignedLong))
+      result = TypeDerived::setCastToThis(env.resultAsInteger(), env);
+   else if ((type >= Operation::TCastFloat) && (type <= Operation::TCastLongDouble))
+      result = TypeDerived::setCastToThis(env.resultAsFloating(), env);
+   else if (type == Operation::TCastMultiBit)
+      result = TypeDerived::setCastToThis(env.resultAsMultiBit(), env);
+   else if (type == Operation::TCastBit)
+      result = TypeDerived::setCastToThis(env.resultAsBit(), env);
+   else
+      { AssumeUncalled }
+   return result;
+}
+
+#define DefineImplementsUnaryMethod(TypeOperation)                                                \
+template <class TypeBase, class TypeDerived>                                                      \
+bool                                                                                              \
+TBaseElement<TypeBase, TypeDerived>::apply##TypeOperation(const VirtualOperation& operation, EvaluationEnvironment& env)\
+   {  ((TypeDerived&) *this).TypeDerived::inheritedImplementation::apply((const TypeOperation##Operation&) operation, env);\
+      return true;                                                                                \
+   }
+
+#define DefineImplementsBinaryMethod(TypeOperation)                                               \
+template <class TypeBase, class TypeDerived>                                                      \
+bool                                                                                              \
+TBaseElement<TypeBase, TypeDerived>::apply##TypeOperation(const VirtualOperation& operation, EvaluationEnvironment& env)\
+   {  ((TypeDerived&) *this).TypeDerived::inheritedImplementation::apply((const TypeOperation##Operation&) operation, TypeDerived::getSameArgument(env), env);\
+      return true;                                                                                \
+   }
+
+#define DefineImplementsBinaryMethodWithIntArg(TypeOperation)                                     \
+template <class TypeBase, class TypeDerived>                                                      \
+bool                                                                                              \
+TBaseElement<TypeBase, TypeDerived>::apply##TypeOperation(const VirtualOperation& operation, EvaluationEnvironment& env)\
+   {  ((TypeDerived&) *this).TypeDerived::inheritedImplementation::apply((const TypeOperation##Operation&) operation, \
+         ((const IntElement&) env.getFirstArgument()).getInt(), env);                             \
+      return true;                                                                                \
+   }
+
+#define DefineImplementsOBinaryMethodWithIntArg(TypeOperation)                                    \
+template <class TypeBase, class TypeDerived>                                                      \
+bool                                                                                              \
+TBaseElement<TypeBase, TypeDerived>::apply##TypeOperation##IntElement(const VirtualOperation& operation, EvaluationEnvironment& env)\
+   {  ((TypeDerived&) *this).TypeDerived::inheritedImplementation::apply((const TypeOperation##Operation&) operation, \
+         ((const IntElement&) env.getFirstArgument()).getInt(), env);                             \
+      return true;                                                                                \
+   }
+
+DefineImplementsUnaryMethod(PrevAssign)
+DefineImplementsUnaryMethod(NextAssign)
+DefineImplementsBinaryMethod(PlusAssign)
+DefineImplementsBinaryMethod(MinusAssign)
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::applyMinusSigned(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const TypeDerived*>(&env.getFirstArgument()))
+   const TypeDerived& source = (const TypeDerived&) env.getFirstArgument();
+   ComparisonResult result = inherited::compare((const inherited&) source);
+   if ((result == CREqual) || (result == CRGreater)) {
+      typename TypeDerived::inheritedImplementation::SimulatedType diff
+         = ((const TypeDerived&) *this).getImplementation().getElement() - source.getImplementation().getElement();
+      if (diff > (typename TypeDerived::Implementation) TypeDerived::SignedDomain::getMax()) {
+         env.setPositiveOverflow();
+         env.presult().absorbElement(source.createSignedElement(TypeDerived::SignedDomain::getMax()));
+      }
+      else
+         env.presult().absorbElement(source.createSignedElement((typename TypeDerived::SignedDomain::Implementation) diff));
+   }
+   else if (result == CRLess) {
+      typename TypeDerived::inheritedImplementation::SimulatedType diff
+         = source.getElement() - ((const TypeDerived&) *this).getElement();
+      if ((typename TypeDerived::SignedDomain::Implementation) diff > -TypeDerived::SignedDomain::getMin()) {
+         env.setNegativeOverflow();
+         env.presult().absorbElement(source.createSignedElement(TypeDerived::SignedDomain::getMax()));
+      }
+      else
+         env.presult().absorbElement(source.createSignedElement(-((typename TypeDerived::SignedDomain::Implementation) diff)));
+   };
+   return true;
+}
+
+DefineImplementsUnaryMethod(OppositeAssign)
+// DefineImplementsUnaryMethod(Opposite)
+DefineImplementsBinaryMethod(TimesAssign)
+DefineImplementsBinaryMethod(DivideAssign)
+DefineImplementsBinaryMethod(ModuloAssign)
+DefineImplementsBinaryMethod(BitOrAssign)
+DefineImplementsBinaryMethod(BitAndAssign)
+DefineImplementsBinaryMethod(BitExclusiveOrAssign)
+DefineImplementsUnaryMethod(BitNegateAssign)
+DefineImplementsBinaryMethodWithIntArg(LeftShiftAssign)
+DefineImplementsBinaryMethodWithIntArg(RightShiftAssign)
+DefineImplementsOBinaryMethodWithIntArg(LeftShiftAssign)
+DefineImplementsOBinaryMethodWithIntArg(RightShiftAssign)
+DefineImplementsBinaryMethodWithIntArg(LeftRotateAssign)
+DefineImplementsBinaryMethodWithIntArg(RightRotateAssign)
+DefineImplementsOBinaryMethodWithIntArg(LeftRotateAssign)
+DefineImplementsOBinaryMethodWithIntArg(RightRotateAssign)
+
+#undef DefineImplementsUnaryMethod
+#undef DefineImplementsBinaryMethod
+#undef DefineImplementsBinaryMethodWithIntArg
+#undef DefineImplementsOBinaryMethodWithIntArg
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::applyPromoted(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   TypeDerived& thisElement = (TypeDerived&) *this;
+   PPVirtualElement promotion(thisElement.createPromotionElement(thisElement.getElement()), PNT::Pointer::Init());
+   return promotion->apply(operation, env);
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::applyPromotedAssign(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   TypeDerived& thisElement = (TypeDerived&) *this;
+   PPVirtualElement promotion(thisElement.createPromotionElement(thisElement.getElement()), PNT::Pointer::Init());
+   bool hasApplied;
+   if (env.hasFirstArgument()) {
+      AssumeCondition(dynamic_cast<const TypeDerived*>(&env.getFirstArgument()))
+      const auto& sourceElement = (const TypeDerived&) env.getFirstArgument();
+      PPVirtualElement promotedArgument(sourceElement.createPromotionElement(sourceElement.getElement()), PNT::Pointer::Init());
+      env.setFirstArgument(*promotedArgument);
+      hasApplied = promotion->apply(operation, env);
+      env.setFirstArgument(sourceElement);
+   }
+   else
+      hasApplied = promotion->apply(operation, env);
+   if (hasApplied) {
+      if (env.hasResult())
+         promotion = env.presult();
+      promotion->apply(typename TypeDerived::CastDegradation(), env);
+      if (!env.hasResult())
+         env.presult() = promotion;
+      return true;
+   };
+   return false;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintTimesAssignWithConstantResult(const VirtualOperation&, VirtualElement& sourceElement,
+      const VirtualElement& aresultElement, ConstraintEnvironment::Argument arg, ConstraintEnvironment& env) {
+   TypeDerived& thisElement = (TypeDerived&) *this;
+   if (thisElement.getElement() == 0)
+      env.mergeVerdictExact();
+   else {
+      if (env.hasEvaluationError())
+         return true;
+      AssumeCondition(dynamic_cast<const TypeDerived*>(&aresultElement))
+      const TypeDerived& resultElement = (const TypeDerived&) aresultElement;
+      PPVirtualElement
+         source = TypeBase::Methods::apply(aresultElement, typename TypeBase::Operation().setDivide(), *this, typename TypeBase::EvaluationApplyParameters(env)),
+         result = TypeBase::Methods::apply(*source, typename TypeBase::Operation().setTimes(), *this, typename TypeBase::EvaluationApplyParameters(env));
+      if (result->getApproxKind().isConstant()) {
+         if (resultElement.getElement() == ((const TypeDerived&) *result).getElement()) {
+            IntersectEnvironment intersectEnv(env, arg.queryInverse());
+            sourceElement.intersectWith(*source, intersectEnv);
+         }
+         else
+            env.setEmpty();
+      }
+      else {
+         result = TypeBase::Methods::intersect(result, resultElement, typename TypeBase::EvaluationApplyParameters(env));
+         env.mergeVerdictDegradate();
+         IntersectEnvironment intersectEnv(env, arg.queryInverse());
+         sourceElement.intersectWith(*source, intersectEnv);
+      };
+   };
+   return true;
+}
+
+// manage the overflow
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintDivideAssignWithConstantResultOnArgSource(const VirtualOperation&,
+      VirtualElement& sourceElement, const VirtualElement& aresultElement, ConstraintEnvironment& env) {
+   typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
+   env.mergeVerdictExact();
+   TypeDerived& thisElement = (TypeDerived&) *this;
+   if (thisElement.getElement() == 0)
+      return true;
+
+   AssumeCondition(dynamic_cast<const TypeDerived*>(&aresultElement))
+   const TypeDerived& resultElement = (const TypeDerived&) aresultElement;
+   SimulatedType thisInt = thisElement.getElement(), resultInt = resultElement.getElement();
+   SimulatedType sourceMin = 0, sourceMax = 0;
+
+   IntersectEnvironment intersectEnv(env, ConstraintEnvironment::Argument().setResult());
+
+   if (!TypeDerived::isNegative(thisInt)) {
+      if (resultInt > 0) {
+         sourceMax = thisInt*(resultInt+1)-1;
+         sourceMin = thisInt*resultInt; // [sourceMin, sourceMax]
+      }
+      else if (TypeDerived::isNegative(resultInt)) {
+         sourceMin = thisInt*(resultInt-1)+1;
+         sourceMax = thisInt*resultInt; // [sourceMin, sourceMax]
+      }
+      else { // resultInt == 0
+         sourceMax = thisInt-1;
+         if (TypeDerived::isSigned()) {
+            sourceMin = sourceMax;
+            TypeDerived::setToNegative(sourceMin);
+         }
+         else
+            sourceMin = 0;
+      };
+   }
+   else { // thisInt < 0
+      if (resultInt > 0) {
+         sourceMin = thisInt*(resultInt+1)+1;
+         sourceMax = thisInt*resultInt; // [sourceMin, sourceMax]
+      }
+      else if (TypeDerived::isNegative(resultInt)) {
+         if ((resultInt+1 == 0) && (thisInt+1 == 0) && env.isPositiveOverflow()
+               && env.doesPropagateErrorStates()) {
+            Disjunction intersect(Disjunction::Init().setTable(*this));
+            PPVirtualElement sourceMinElement(*this), sourceMaxElement(*this);
+            ((TypeDerived&) *sourceMaxElement).setElement(1);
+            intersect.add(sourceMinElement, env.getInformationKind());
+            intersect.add(sourceMaxElement, env.getInformationKind());
+            sourceElement.intersectWith(intersect, intersectEnv);
+            return true;
+         };
+         sourceMax = thisInt*(resultInt-1)-1;
+         sourceMin = thisInt*resultInt; // [sourceMin, sourceMax]
+      }
+      else { // resultInt == 0
+         sourceMax = sourceMin = thisInt+1;
+         TypeDerived::setToNegative(sourceMax);
+      };
+   };
+
+   if (sourceMin == sourceMax) {
+      PPVirtualElement intersect(*this);
+      ((TypeDerived&) *intersect).setElement(sourceMin);
+      sourceElement.intersectWith(*intersect, intersectEnv);
+   }
+   else {
+      PPVirtualElement min(*this), max(*this);
+      ((TypeDerived&) *min).setElement(sourceMin);
+      ((TypeDerived&) *max).setElement(sourceMax);
+      sourceElement.intersectWith(Interval(Interval::Init().setInterval(min, max)), intersectEnv);
+   };
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintDivideAssignWithConstantResultOnArgResult(const VirtualOperation&, VirtualElement& sourceElement,
+      const VirtualElement& aresultElement, ConstraintEnvironment& env) {
+   typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
+   TypeDerived& thisElement = (TypeDerived&) *this;
+   env.mergeVerdictExact();
+   if (thisElement.getElement() == 0)
+      return true;
+
+   AssumeCondition(dynamic_cast<const TypeDerived*>(&aresultElement))
+   const TypeDerived& resultElement = (const TypeDerived&) aresultElement;
+   SimulatedType thisInt = thisElement.getElement(), resultInt = resultElement.getElement();
+   SimulatedType sourceMin = 0, sourceMax = 0;
+   bool isDisjunction = false;
+   bool isDisjunctionIncludeMin = false;
+   bool isDisjunctionIncludeMax = false;
+
+   IntersectEnvironment intersectEnv(env, ConstraintEnvironment::Argument().setFst());
+
+   if (!TypeDerived::isNegative(thisInt)) {
+      if (resultInt > 0) {
+         sourceMin = (thisInt+1)/(resultInt+1);
+         sourceMax = thisInt/resultInt; // [sourceMin, sourceMax]
+      }
+      else if (TypeDerived::isNegative(resultInt)) {
+         sourceMax = (thisInt+1)/(resultInt-1);
+         sourceMin = thisInt/resultInt; // [sourceMin, sourceMax]
+      }
+      else { // resultInt == 0
+         if (TypeDerived::isSigned()) {
+            sourceMin = thisInt;
+            TypeDerived::setToNegative(sourceMin);
+            isDisjunctionIncludeMin = TypeDerived::isNegative(sourceMin-1);
+         };
+         sourceMax = thisInt;
+         isDisjunctionIncludeMax = ((sourceMax+1) > 0);
+         isDisjunction = true; // ]-infty, sourceMin[ cup ]sourceMax, +infty[
+      };
+   }
+   else { // thisInt < 0
+      if (resultInt > 0) {
+         sourceMax = (thisInt-1)/(resultInt+1);
+         sourceMin = thisInt/resultInt; // [sourceMin, sourceMax]
+      }
+      else if (TypeDerived::isNegative(resultInt)) {
+         if ((resultInt+1 == 0) && (thisInt+1 == 0) && env.isPositiveOverflow()
+               && env.doesPropagateErrorStates()) {
+            Disjunction intersect(Disjunction::Init().setTable(*this));
+            PPVirtualElement sourceMinElement(*this), sourceMaxElement(*this);
+            ((TypeDerived&) *sourceMaxElement).setElement(1);
+            intersect.add(sourceMinElement, env.getInformationKind());
+            intersect.add(sourceMaxElement, env.getInformationKind());
+            sourceElement.intersectWith(intersect, intersectEnv);
+            return true;
+         };
+         sourceMin = (thisInt-1)/(resultInt-1);
+         sourceMax = thisInt/resultInt; // [sourceMin, sourceMax]
+      }
+      else { // resultInt == 0
+         sourceMax = sourceMin = thisInt;
+         TypeDerived::setToNegative(sourceMax);
+         isDisjunctionIncludeMin = TypeDerived::isNegative(sourceMin-1);
+         isDisjunctionIncludeMax = ((sourceMax+1) > 0);
+         isDisjunction = true; // ]-infty, sourceMin[ cup ]sourceMax, +infty[
+      };
+   };
+
+   if (isDisjunction) {
+      Disjunction intersect(Disjunction::Init().setTable(*this));
+      Interval* interval = nullptr;
+      if (isDisjunctionIncludeMin) {
+         PPVirtualElement sourceMinElement(*this);
+         ((TypeDerived&) *sourceMinElement).setElement(sourceMin);
+         intersect.add(PPVirtualElement(interval = new Interval(Interval::Init()
+            .setLessThan(sourceMinElement)), PNT::Pointer::Init()), env.getInformationKind());
+      };
+      if (isDisjunctionIncludeMax) {
+         PPVirtualElement sourceMaxElement(*this);
+         ((TypeDerived&) *sourceMaxElement).setElement(sourceMax);
+         intersect.add(PPVirtualElement(interval = new Interval(Interval::Init()
+            .setGreaterThan(*sourceMaxElement)), PNT::Pointer::Init()), env.getInformationKind());
+      };
+      if (isDisjunctionIncludeMin && isDisjunctionIncludeMax)
+         sourceElement.intersectWith(intersect, intersectEnv);
+      else if (isDisjunctionIncludeMin || isDisjunctionIncludeMax)
+         sourceElement.intersectWith(*interval, intersectEnv);
+      else
+         env.setEmpty();
+   }
+   else {
+      PPVirtualElement sourceMinElement(*this), sourceMaxElement(*this);
+      ((TypeDerived&) *sourceMinElement).setElement(sourceMin);
+      ((TypeDerived&) *sourceMaxElement).setElement(sourceMax);
+      sourceElement.intersectWith(((sourceMin == sourceMax) ? *sourceMinElement
+            :  ((const VirtualElement&) Interval(Interval::Init().setInterval(
+                  sourceMinElement, sourceMaxElement)))), intersectEnv);
+   };
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintModuloAssignWithConstantResultOnArgResult(const VirtualOperation&, VirtualElement& sourceElement,
+      const VirtualElement& aresultElement, ConstraintEnvironment& env) {
+   typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
+   TypeDerived& thisElement = (TypeDerived&) *this;
+   if (thisElement.getElement() == 0)
+      return true;
+
+   AssumeCondition(dynamic_cast<const TypeDerived*>(&aresultElement))
+   const TypeDerived& resultElement = (const TypeDerived&) aresultElement;
+   SimulatedType thisInt = thisElement.getElement(), resultInt = resultElement.getElement();
+   IntersectEnvironment intersectEnv(env, ConstraintEnvironment::Argument().setFst());
+   if (TypeDerived::isNegative(resultInt)) {
+      TypeDerived::setToNegative(resultInt);
+      TypeDerived::setToNegative(thisInt);
+   };
+   if (!TypeDerived::isNegative(resultInt)) {
+      if (thisInt < resultInt) {
+         env.setEmpty();
+         return true;
+      };
+      if (thisInt == resultInt) {
+         PPVirtualElement sourceMinElement(*this);
+         ((TypeDerived&) *sourceMinElement).setElement(resultInt);
+         sourceElement.intersectWith(Interval(Interval::Init().setGreaterThan(sourceMinElement)), intersectEnv);
+         env.mergeVerdictExact();
+         return true;
+      }
+      else {
+         if ((thisInt <= resultInt) || (resultInt == TypeDerived::inheritedImplementation::getMax())) {
+            env.setEmpty();
+            return true;
+         };
+         SimulatedType k = (thisInt-resultInt)/(resultInt+1);
+         if (k == 0) {
+            env.setEmpty();
+            return true;
+         };
+         PPVirtualElement newElement;
+         env.mergeVerdictExact();
+         if ((k == 1) || ((k == 2) && (((thisInt - resultInt) & 1) != 0))) {
+            newElement.setElement(thisElement);
+            ((TypeDerived&) *newElement).setElement(thisInt-resultInt);
+         }
+         else {
+            Disjunction* disjunctionNewElement = nullptr;
+            PPVirtualElement diff(thisElement), diffDivTwo(thisElement);
+            ((TypeDerived&) *diff).setElement(thisInt-resultInt);
+            newElement = VirtualElement::Methods::newDisjunction(*diff);
+            disjunctionNewElement = (Disjunction*) &*newElement;
+            // newElement.absorbElement(disjunctionNewElement = new Disjunction(Disjunction::Init().setTable(*diff)));
+            ((TypeDerived&) *diffDivTwo).setElement((thisInt-resultInt)/2);
+            disjunctionNewElement->addExact(diff).addExact(diffDivTwo);
+            if (k > 2) { // we know in may that thisInt > newElement > resultInt
+               PPVirtualElement diffDivThree(thisElement);
+               ((TypeDerived&) *diffDivThree).setElement((thisInt-resultInt)/3);
+               disjunctionNewElement->addMay(new Interval(Interval::Init()
+                  .setInterval(aresultElement, *diffDivThree).excludeMin()));
+               if ((thisInt - resultInt) % 3 == 0)
+                  disjunctionNewElement->addSure(diffDivThree);
+               env.mergeVerdictDegradate();
+            };
+         };
+         sourceElement.intersectWith(*newElement, intersectEnv);
+         return true;
+      };
+   };
+   env.setEmpty();
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintModuloAssignWithConstantResultOnArgSource(
+      const VirtualOperation&, VirtualElement& sourceElement, const VirtualElement& resultElement,
+      ConstraintEnvironment& env) {
+   typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
+   TypeDerived& thisElement = (TypeDerived&) *this;
+   PPVirtualElement newElement;
+
+   if (thisElement.getElement() == 0) {
+      env.mergeVerdictExact();
+      return true;
+   };
+   // else the method constraintTo would have been called.
+   AssumeCondition(dynamic_cast<const TypeDerived*>(&resultElement))
+   SimulatedType thisInt = thisElement.getElement();
+   newElement.absorbElement((thisInt > 0)
+      ?  new Interval(Interval::Init().setGreaterOrEqualThan(*this))
+      :  new Interval(Interval::Init().setLessOrEqualThan(*this)));
+   IntersectEnvironment intersectEnv(env, ConstraintEnvironment::Argument().setResult());
+   sourceElement.intersectWith(*newElement, intersectEnv);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintBitOrAssignWithConstantResult(const VirtualOperation&, VirtualElement& sourceElement,
+      const VirtualElement& aresultElement, ConstraintEnvironment::Argument arg, ConstraintEnvironment& env) {
+   typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
+   IntersectEnvironment intersectEnv(env, arg.queryInverse());
+   TypeDerived& thisElement = (TypeDerived&) *this;
+
+   // else the method constraintTo would have been called.
+   AssumeCondition(dynamic_cast<const TypeDerived*>(&aresultElement))
+   const TypeDerived& resultElement = (const TypeDerived&) aresultElement;
+   SimulatedType thisInt = thisElement.getElement(), resultInt = resultElement.getElement();
+   if ((thisInt | resultInt) != resultInt)
+      env.setEmpty();
+   else
+      sourceElement.intersectWith(
+         BitFieldMask<TypeDerived>(thisElement, resultInt & ~thisInt /* 1 to place */,
+                                   resultInt /* 0 to place */), intersectEnv);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintBitAndAssignWithConstantResult(
+      const VirtualOperation&, VirtualElement& sourceElement,
+      const VirtualElement& aresultElement, ConstraintEnvironment::Argument arg,
+      ConstraintEnvironment& env) {
+   typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
+   IntersectEnvironment intersectEnv(env, arg.queryInverse());
+   TypeDerived& thisElement = (TypeDerived&) *this;
+
+   // else the method constraintTo would have been called.
+   AssumeCondition(dynamic_cast<const TypeDerived*>(&aresultElement))
+   const TypeDerived& resultElement = (const TypeDerived&) aresultElement;
+   SimulatedType thisInt = thisElement.getElement(), resultInt = resultElement.getElement();
+   if ((thisInt | resultInt) != thisInt)
+      env.setEmpty();
+   else
+      sourceElement.intersectWith(
+         BitFieldMask<TypeDerived>(thisElement, resultInt   /* 1 to place */,
+                                   resultInt | ~thisInt  /* 0 to place */), intersectEnv);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintBitExclusiveOrAssignWithConstantResult(
+      const VirtualOperation&, VirtualElement& sourceElement,
+      const VirtualElement& aresultElement, ConstraintEnvironment::Argument arg,
+      ConstraintEnvironment& env) {
+   IntersectEnvironment intersectEnv(env, arg.queryInverse());
+   TypeDerived& thisElement = (TypeDerived&) *this;
+
+   // else the method constraintTo would have been called.
+   AssumeCondition(dynamic_cast<const TypeDerived*>(&aresultElement))
+   const TypeDerived& resultElement = (const TypeDerived&) aresultElement;
+   PPVirtualElement intersect(thisElement);
+   ((TypeDerived&) *intersect).setElement(thisElement.getElement() ^ resultElement.getElement());
+   sourceElement.intersectWith(*intersect, intersectEnv);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintShiftOrRotateAssignWithConstantResult(
+      const VirtualOperation& operation, VirtualElement& sourceElement,
+      const VirtualElement& resultElement, ConstraintEnvironment::Argument arg,
+      ConstraintEnvironment& env) {
+   AssumeCondition(arg.isResult())
+   return constraintShiftOrRotateAssignWithConstantResultOnArgResult(operation, sourceElement, resultElement, env);
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintFromResultLeftShiftAssignWithConstantResultOnArgSource(
+      IntElement& thisElement, const VirtualOperation&, VirtualElement& sourceElement,
+      ConstraintEnvironment& env) const {
+   typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
+   // else the method constraintTo would have been called.
+   AssumeCondition(dynamic_cast<const TypeDerived*>(this))
+   const TypeDerived& resultElement = (const TypeDerived&) *this;
+   int thisInt = thisElement.getInt();
+   SimulatedType resultInt = resultElement.getElement();
+   SimulatedType mask = 0;
+   mask = ~mask;
+   mask <<= thisInt;
+   SimulatedType sourceInt = (resultInt >> thisInt) & ~mask;
+   IntersectEnvironment intersectEnv(env, ConstraintEnvironment::Argument().setResult());
+   sourceElement.intersectWith(
+      BitFieldMask<TypeDerived>(resultElement, sourceInt | mask /* 1 to place */,
+                                sourceInt /* 0 to place */), intersectEnv);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintFromResultRightShiftAssignWithConstantResultOnArgSource(
+      IntElement& thisElement, const VirtualOperation&, VirtualElement& sourceElement,
+      ConstraintEnvironment& env) const {
+   typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
+   // else the method constraintTo would have been called.
+   AssumeCondition(dynamic_cast<const TypeDerived*>(this))
+   const TypeDerived& resultElement = (const TypeDerived&) *this;
+   int thisInt = thisElement.getInt();
+   SimulatedType resultInt = resultElement.getElement();
+   SimulatedType mask = 0;
+   mask = ~mask;
+   mask <<= thisInt;
+   mask = ~mask;
+   SimulatedType sourceInt = (resultInt << thisInt) & ~mask;
+   IntersectEnvironment intersectEnv(env, ConstraintEnvironment::Argument().setResult());
+   sourceElement.intersectWith(
+      BitFieldMask<TypeDerived>(resultElement, sourceInt | mask /* 1 to place */,
+                                sourceInt /* 0 to place */), intersectEnv);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintShiftOrRotateAssignWithConstantResultOnArgResult(
+      const VirtualOperation& aoperation, VirtualElement& sourceElement,
+      const VirtualElement& aresultElement, ConstraintEnvironment& env) {
+   typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
+   IntersectEnvironment intersectEnv(env, ConstraintEnvironment::Argument().setFst());
+   TypeDerived& thisElement = (TypeDerived&) *this;
+
+   // else the method constraintTo would have been called.
+   AssumeCondition(dynamic_cast<const TypeDerived*>(&aresultElement))
+   const TypeDerived& resultElement = (const TypeDerived&) aresultElement;
+   typename TypeDerived::inheritedImplementation thisInt = thisElement, resultInt = resultElement;
+   SimulatedType match = 0;
+   const Operation& operation = (const Operation&) aoperation;
+   for (int index = sizeof(SimulatedType); --index >= 0; ) {
+      typename TypeDerived::inheritedImplementation thisShiftOrRotate(thisInt);
+      EvaluationEnvironment applyEnv = EvaluationEnvironment(EvaluationEnvironment::Init(env));
+      if (operation.getType() == Operation::TLeftShiftAssign)
+         thisShiftOrRotate.apply(LeftShiftAssignOperation(), index, applyEnv);
+      else if (operation.getType() == Operation::TRightShiftAssign)
+         thisShiftOrRotate.apply(RightShiftAssignOperation(), index, applyEnv);
+      else if (operation.getType() == Operation::TLeftRotateAssign)
+         thisShiftOrRotate.apply(LeftRotateAssignOperation(), index, applyEnv);
+      else if (operation.getType() == Operation::TRightRotateAssign)
+         thisShiftOrRotate.apply(RightRotateAssignOperation(), index, applyEnv);
+      else
+         {  AssumeUncalled }
+      if (!applyEnv.isEmpty() && !applyEnv.hasResult() && (thisShiftOrRotate == resultInt))
+         match |= (1 << index);
+   };
+   
+   PPVirtualElement matchElement = newIntegerFromBase2(match);
+   if (!matchElement.isValid())
+      env.setEmpty();
+   else
+      sourceElement.intersectWith(*matchElement, intersectEnv);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintFromResultRotateAssignWithConstantResultOnArgSource(
+      IntElement& thisElement, const VirtualOperation& aoperation, VirtualElement& sourceElement, ConstraintEnvironment& env) const {
+   // typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
+   // else the method constraintTo would have been called.
+   AssumeCondition(dynamic_cast<const TypeDerived*>(this))
+   const TypeDerived& resultElement = (const TypeDerived&) *this;
+   typename TypeDerived::inheritedImplementation source = resultElement;
+   const Operation& operation = (const Operation&) aoperation;
+   int thisInt = thisElement.getInt();
+   EvaluationEnvironment applyEnv = EvaluationEnvironment(EvaluationEnvironment::Init(env));
+   if (operation.getType() == Operation::TLeftRotateAssign)
+      source.apply(RightRotateAssignOperation(), thisInt, applyEnv);
+   else if (operation.getType() == Operation::TRightRotateAssign)
+      source.apply(LeftRotateAssignOperation(), thisInt, applyEnv);
+   else
+      {  AssumeUncalled }
+   PPVirtualElement intersect(resultElement);
+   ((TypeDerived&) *intersect).setElement(source.getElement());
+   IntersectEnvironment intersectEnv(env, ConstraintEnvironment::Argument().setResult());
+   sourceElement.intersectWith(*intersect, intersectEnv);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+PPVirtualElement
+TBaseElement<TypeBase, TypeDerived>::newIntegerFromBase2(long int match) const {
+   if (match == 0)
+      return PPVirtualElement();
+   TypeDerived& thisElement = (TypeDerived&) *this;
+
+   PPVirtualElement matchElement;
+   Disjunction* disjunctionMatch = nullptr;
+   int lastLowerElement=-1, lastGreaterElement=-1;
+
+   for (int index = sizeof(long int); --index >= 0; ) {
+      if (match & (1L << index)) {
+         if (lastLowerElement == index+1)
+            lastLowerElement = index;
+         else {
+            if (lastLowerElement != -1) {
+               if (!matchElement.isValid()) {
+                  matchElement = VirtualElement::Methods::newDisjunction(*this);
+                  disjunctionMatch = (Disjunction*) &*matchElement;
+                  // matchElement.absorbElement(disjunctionMatch = new Disjunction(Disjunction::Init()));
+               };
+               if (lastGreaterElement == lastLowerElement)
+                  disjunctionMatch->addExact(thisElement.createIntElement(VirtualElement::Init().setInitialValue(
+                     Implementation::IntElement(lastGreaterElement))));
+               else {
+                  PPVirtualElement min(thisElement.createIntElement(VirtualElement::Init().setInitialValue(
+                        Implementation::IntElement(lastLowerElement))), PNT::Pointer::Init()),
+                     max(thisElement.createIntElement(VirtualElement::Init().setInitialValue(
+                        Implementation::IntElement(lastGreaterElement))), PNT::Pointer::Init());
+                  disjunctionMatch->addExact(new Interval(Interval::Init().setInterval(min, max)));
+               };
+            };
+            lastLowerElement = lastGreaterElement = index;
+         };
+      };
+   };
+   AssumeCondition(lastLowerElement != -1)
+   PPVirtualElement min(thisElement.createIntElement(VirtualElement::Init().setInitialValue(
+         Implementation::IntElement(lastLowerElement))), PNT::Pointer::Init()),
+      max;
+   if (lastGreaterElement != lastLowerElement)
+      max.absorbElement(thisElement.createIntElement(VirtualElement::Init().setInitialValue(
+         Implementation::IntElement(lastGreaterElement))));
+   
+   if (disjunctionMatch != nullptr) { // matchElement.isValid()
+      if (lastGreaterElement == lastLowerElement)
+         disjunctionMatch->addExact(min);
+      else
+         disjunctionMatch->addExact(new Interval(Interval::Init().setInterval(min, max)));
+   }
+   else {
+      if (lastGreaterElement == lastLowerElement)
+         matchElement = min;
+      else
+         matchElement.absorbElement(new Interval(Interval::Init().setInterval(min, max)));
+   };
+
+   return matchElement;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::queryBitDomain(const typename TypeBase::QueryOperation&,
+      typename TypeBase::QueryOperation::Environment& env) const {
+   typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
+   typename TypeBase::BitDomainEnvironment& result = (typename TypeBase::BitDomainEnvironment&) env;
+   int oldSize = result.fixedPrefix().getSize();
+   AssumeCondition((oldSize == 0)
+      || (oldSize == TypeDerived::inheritedImplementation::getSize()*8))
+   if (oldSize == 0)
+      result.fixedPrefix().setSize(
+         TypeDerived::inheritedImplementation::getSize()*8);
+   TypeDerived& thisElement = (TypeDerived&) *this;
+   SimulatedType value = thisElement.getElement();
+   bool isNegative = TypeDerived::isNegative(value);
+   int size = TypeDerived::inheritedImplementation::getSize()*8;
+   if (isNegative)
+      TypeDerived::setToNegative(value);
+   result.fixedPrefix()[0] = (unsigned int) value;
+   int index = 0;
+   while ((++index)*((int) sizeof(unsigned int)*8) < size) {
+      int shift = sizeof(unsigned int)*8;
+      value >>= shift;
+      result.fixedPrefix()[index] = (unsigned int) value;
+   };
+   if (isNegative)
+      result.fixedPrefix().neg(TypeDerived::inheritedImplementation::getSize()*8).inc();
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::queryCompareSpecial(const typename TypeBase::QueryOperation&,
+      typename TypeBase::QueryOperation::Environment& env) const {
+   typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
+   typedef typename TypeBase::CompareSpecialEnvironment CompareSpecialEnvironment;
+   CompareSpecialEnvironment& result = (typename TypeBase::CompareSpecialEnvironment&) env;
+   TypeDerived& thisElement = (TypeDerived&) *this;
+   SimulatedType value = thisElement.getElement();
+   if (value == 0)
+      result.mergeBehaviour(CompareSpecialEnvironment::BEqual0);
+   else if (value == 1)
+      result.mergeBehaviour(CompareSpecialEnvironment::BEqual1);
+   else if ((value > 1) && (value < TypeDerived::inheritedImplementation::getMax()))
+      result.mergeBehaviour(CompareSpecialEnvironment::BGreater1);
+   else if (value == TypeDerived::inheritedImplementation::getMax())
+      result.mergeBehaviour(CompareSpecialEnvironment::BEqualMaxint);
+   else if (TypeDerived::inheritedImplementation::isSigned()) {
+      if (value == TypeDerived::inheritedImplementation::getMin())
+         result.mergeBehaviour(CompareSpecialEnvironment::BEqualMinint);
+      else if (value == TypeDerived::inheritedImplementation::getMin()+1)
+         result.mergeBehaviour(CompareSpecialEnvironment::BEqualMinintP1);
+      else if (TypeDerived::isNegative(value+1))
+         result.mergeBehaviour(CompareSpecialEnvironment::BLessM1);
+      else if (value+1 == 0)
+         result.mergeBehaviour(CompareSpecialEnvironment::BEqualM1);
+      else
+         {  AssumeUncalled }
+      return true;
+   }
+   else
+      {  AssumeUncalled }
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::queryGuardAll(const typename TypeBase::QueryOperation&,
+      typename TypeBase::QueryOperation::Environment& aenv) const {
+   AssumeCondition(dynamic_cast<const VirtualQueryOperation::GuardEnvironment*>(&aenv))
+   VirtualQueryOperation::GuardEnvironment& env = (VirtualQueryOperation::GuardEnvironment&) aenv;
+   env.presult() = Approximate::Details::IntOperationElement::Methods::newTrue(*this);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::queryIsSigned(const VirtualElement& source, const VirtualQueryOperation&, VirtualQueryOperation::Environment& env) {
+   typename TypeBase::BooleanEnvironment& result = (typename TypeBase::BooleanEnvironment&) env;
+   result.setBool(TypeDerived::inheritedImplementation::isSigned());
+   return true;
+}
+
+/******************************************/
+/* Implementation of the class IntElement */
+/******************************************/
+
+/* Implementation of the methods apply of IntElement */
+
+// Table of the methods apply
+
+template <class TypeDomainTraits>
+IntElement::MethodApplyTable<TypeDomainTraits>::MethodApplyTable() {
+#include "StandardClasses/UndefineNew.h"
+   inherited::clear();
+
+#define DefineInitMethodTable(TypeOperation)                                                      \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&IntElement::apply##TypeOperation);
+
+   DefineInitMethodTable(PrevAssign)
+   DefineInitMethodTable(NextAssign)
+   DefineInitMethodTable(PlusAssign)
+   DefineInitMethodTable(MinusAssign)
+   inherited::elementAt(Operation::TMinusSignedAssign).setMethod(&IntElement::applyMinusAssign);
+   DefineInitMethodTable(TimesAssign)
+   DefineInitMethodTable(DivideAssign)
+   DefineInitMethodTable(OppositeAssign)
+   DefineInitMethodTable(ModuloAssign)
+   DefineInitMethodTable(BitOrAssign)
+   DefineInitMethodTable(BitAndAssign)
+   DefineInitMethodTable(BitExclusiveOrAssign)
+   DefineInitMethodTable(BitNegateAssign)
+   DefineInitMethodTable(LeftShiftAssign)
+   DefineInitMethodTable(RightShiftAssign)
+   DefineInitMethodTable(LeftRotateAssign)
+   DefineInitMethodTable(RightRotateAssign)
+   DefineInitMethodTable(LogicalAndAssign)
+   DefineInitMethodTable(LogicalOrAssign)
+   DefineInitMethodTable(LogicalNegateAssign)
+
+#undef DefineInitMethodTable
+#include "StandardClasses/DefineNew.h"
+}
+
+#define DefineInitConstraintBinaryMethodTable(TypeOperation)                                      \
+   inherited::mcbtBinaryTable.elementAt(Operation::T##TypeOperation).setMethod(&IntElement::constraint##TypeOperation);
+
+#define DefineInitConstraintBinaryFunctionTable(TypeOperation)                                    \
+   inherited::mcbtBinaryTable.elementAt(Operation::T##TypeOperation).setFunction(&IntElement::constraint##TypeOperation);
+
+#define DefineInitConstraintBinaryMethodTableGeneric(TypeOperation)                               \
+   inherited::mcbtBinaryTable.elementAt(Operation::T##TypeOperation).setArray(                    \
+      new Details::GenericBinaryConstraintMethod<TypeDomainTraits>(&IntElement::constraint##TypeOperation));
+
+#define DefineInitConstraintBinaryMethodTableDouble(TypeOperation)                                \
+   inherited::mcbtBinaryTable.elementAt(Operation::T##TypeOperation).setArray(                    \
+      new Details::GenericAndConstantResultBinaryConstraintMethod<TypeDomainTraits>( \
+         &IntElement::constraint##TypeOperation,                                                  \
+         &IntElement::constraint##TypeOperation##WithConstantResult));
+
+#define DefineInitConstraintBinaryMethodTableTriple(TypeOperation)                                \
+   inherited::mcbtBinaryTable.elementAt(Operation::T##TypeOperation).setArray(                    \
+      new Details::GenericAndConstantResultSourceBinaryConstraintMethod<TypeDomainTraits>(\
+         &IntElement::constraint##TypeOperation,                                                  \
+         &IntElement::constraint##TypeOperation##WithConstantResultOnArgResult,                   \
+         &IntElement::constraint##TypeOperation##WithConstantResultOnArgSource));
+
+#define DefineInitConstraintOBinaryMethodTableTriple(TypeOperation, TypeResultOperation, TypeSourceOperation, TypeGeneric)\
+   inherited::mcbtBinaryTable.elementAt(Operation::T##TypeOperation).setArray(                    \
+      new Details::GenericAndConstantResultSourceBinaryConstraintMethod<TypeDomainTraits>(\
+         &IntElement::constraint##TypeGeneric,                                                    \
+         &IntElement::constraint##TypeResultOperation##WithConstantResultOnArgResult,             \
+         &IntElement::constraint##TypeSourceOperation##WithConstantResultOnArgSource));
+
+template <class TypeDomainTraits>
+IntElement::MethodConstraintTable<TypeDomainTraits>::MethodConstraintTable() {
+#include "StandardClasses/UndefineNew.h"
+   DefineInitConstraintBinaryMethodTable(PlusAssign)
+   DefineInitConstraintBinaryMethodTable(MinusAssign)
+   DefineInitConstraintBinaryMethodTableDouble(TimesAssign)
+   DefineInitConstraintBinaryMethodTableTriple(DivideAssign)
+   DefineInitConstraintBinaryMethodTableTriple(ModuloAssign)
+   DefineInitConstraintBinaryMethodTableDouble(BitOrAssign)
+   DefineInitConstraintBinaryMethodTableDouble(BitAndAssign)
+   DefineInitConstraintBinaryMethodTableDouble(BitExclusiveOrAssign)
+   DefineInitConstraintOBinaryMethodTableTriple(LeftShiftAssign, ShiftOrRotateAssign, LeftShiftAssign, BinaryNoPropagation)
+   DefineInitConstraintOBinaryMethodTableTriple(RightShiftAssign, ShiftOrRotateAssign, RightShiftAssign, BinaryNoPropagation)
+   DefineInitConstraintOBinaryMethodTableTriple(LeftRotateAssign, ShiftOrRotateAssign, RotateAssign, RotateAssign)
+   DefineInitConstraintOBinaryMethodTableTriple(RightRotateAssign, ShiftOrRotateAssign, RotateAssign, RotateAssign)
+   DefineInitConstraintBinaryMethodTableGeneric(LogicalAndAssign)
+   DefineInitConstraintBinaryMethodTableGeneric(LogicalOrAssign)
+#include "StandardClasses/DefineNew.h"
+}
+#undef DefineInitConstraintOBinaryMethodTableTriple
+#undef DefineInitConstraintBinaryMethodTableTriple
+#undef DefineInitConstraintBinaryMethodTableDouble
+#undef DefineInitConstraintBinaryMethodTableGeneric
+#undef DefineInitConstraintBinaryMethodTable
+
+template <class TypeDomainTraits>
+IntElement::MethodQueryTable<TypeDomainTraits>::MethodQueryTable() {
+#include "StandardClasses/UndefineNew.h"
+   VirtualElement::FunctionQueryTable* functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TExtern).absorbFunctionTable(functionTable);
+   functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TOperation).absorbFunctionTable(functionTable);
+   IntElement::fillTable(*this, (IntElement*) nullptr);
+   (*functionTable)[QueryOperation::TOInverseCast].resetMethod(&IntElement::queryInverseCastOperation);
+   functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TDuplication).absorbFunctionTable(functionTable);
+   functionTable->setSize(3);
+   (*functionTable)[QueryOperation::TCDClone].setMethod(&IntElement::queryCopy);
+   (*functionTable)[QueryOperation::TCDSpecialize].setMethod(&IntElement::querySpecialize);
+   
+   functionTable = &inherited::elementAt(VirtualQueryOperation::TExtern).getFunctionTable();
+   (*functionTable)[QueryOperation::TESigned].resetMethod(&IntElement::queryIsSigned);
+   functionTable = &inherited::elementAt(VirtualQueryOperation::TOperation).getFunctionTable();
+   
+   functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TSimplification).absorbFunctionTable(functionTable);
+   functionTable->setSize(QueryOperation::EndOfTypeSimplification);
+   (*functionTable)[QueryOperation::TSUndefined].setMethod(&IntElement::queryIdentity);
+   (*functionTable)[QueryOperation::TSConstant].setMethod(&IntElement::queryIdentity);
+   (*functionTable)[QueryOperation::TSInterval].setMethod(&IntElement::queryIdentity);
+   (*functionTable)[QueryOperation::TSConstantDisjunction].setMethod(&IntElement::queryIdentity);
+
+   Details::MethodQuerySecondDecisionNode<TypeDomainTraits>* methodTable = new Approximate::Details::MethodQuerySecondDecisionNode<TypeDomainTraits>();
+   inherited::elementAt(VirtualQueryOperation::TCompareSpecial).absorbMethodTable(methodTable);
+   methodTable->setSize(QueryOperation::EndOfTypeCompareSpecial);
+   (*methodTable)[QueryOperation::TCSGuard].setMethod(&IntElement::queryGuardAll);
+   (*methodTable)[QueryOperation::TCSNatural].setMethod(&IntElement::queryCompareSpecial);
+   (*methodTable)[QueryOperation::TCSSigned].setMethod(&IntElement::queryCompareSpecial);
+   (*methodTable)[QueryOperation::TCSUnsigned].setMethod(&IntElement::queryCompareSpecial);
+   (*methodTable)[QueryOperation::TCSBitDomain].setMethod(&IntElement::queryBitDomain);
+   (*methodTable)[QueryOperation::TCSBound].setMethod(&IntElement::queryBound);
+#include "StandardClasses/DefineNew.h"
+}
+
+/**************************************************/
+/* Implementation of the class UnsignedIntElement */
+/**************************************************/
+
+template <class TypeDomainTraits>
+UnsignedIntElement::MethodApplyTable<TypeDomainTraits>::MethodApplyTable() {
+#include "StandardClasses/UndefineNew.h"
+   inherited::clear();
+
+#define DefineInitMethodTable(TypeOperation)                                                      \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&UnsignedIntElement::apply##TypeOperation);
+#define DefineInitOMethodTable(TypeOperation, TypeElement)                                        \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&UnsignedIntElement::apply##TypeOperation##TypeElement);
+
+   DefineInitMethodTable(PrevAssign)
+   DefineInitMethodTable(NextAssign)
+   DefineInitMethodTable(PlusAssign)
+   DefineInitMethodTable(MinusAssign)
+   inherited::elementAt(Operation::TMinusSignedAssign).setMethod(&UnsignedIntElement::applyMinusSigned);
+   DefineInitMethodTable(TimesAssign)
+   DefineInitMethodTable(DivideAssign)
+   DefineInitMethodTable(OppositeAssign)
+   DefineInitMethodTable(ModuloAssign)
+   DefineInitMethodTable(BitOrAssign)
+   DefineInitMethodTable(BitAndAssign)
+   DefineInitMethodTable(BitExclusiveOrAssign)
+   DefineInitMethodTable(BitNegateAssign)
+   DefineInitOMethodTable(LeftShiftAssign, IntElement)
+   DefineInitOMethodTable(RightShiftAssign, IntElement)
+   DefineInitOMethodTable(LeftRotateAssign, IntElement)
+   DefineInitOMethodTable(RightRotateAssign, IntElement)
+
+#undef DefineInitMethodTable
+#undef DefineInitOMethodTable
+#include "StandardClasses/DefineNew.h"
+}
+
+// UnsignedIntElement::MethodApplyTable UnsignedIntElement::matMethodApplyTable;
+
+#define DefineInitConstraintBinaryMethodTable(TypeOperation)                                      \
+   inherited::mcbtBinaryTable[Operation::T##TypeOperation].setMethod(&UnsignedIntElement::constraint##TypeOperation);
+
+#define DefineInitConstraintBinaryMethodTableGeneric(TypeOperation)                               \
+   inherited::mcbtBinaryTable[Operation::T##TypeOperation].setArray(                                  \
+      new Approximate::Details::GenericBinaryConstraintMethod<TypeDomainTraits>(&UnsignedIntElement::constraint##TypeOperation));
+
+#define DefineInitConstraintBinaryMethodTableDouble(TypeOperation)                                \
+   inherited::mcbtBinaryTable[Operation::T##TypeOperation].setArray(                              \
+      new Approximate::Details::GenericAndConstantResultBinaryConstraintMethod<TypeDomainTraits>( \
+         &UnsignedIntElement::constraint##TypeOperation,                                          \
+         &UnsignedIntElement::constraint##TypeOperation##WithConstantResult));
+
+#define DefineInitConstraintOBinaryMethodTableDouble(TypeOperation, TypeResultOperation, TypeGenericMethod)\
+   inherited::mcbtBinaryTable[Operation::T##TypeOperation].setArray(                              \
+      new Approximate::Details::GenericAndConstantResultBinaryConstraintMethod<TypeDomainTraits>( \
+         &UnsignedIntElement::constraint##TypeGenericMethod,                                      \
+         &UnsignedIntElement::constraint##TypeResultOperation##WithConstantResult));
+
+#define DefineInitConstraintBinaryMethodTableTriple(TypeOperation)                                \
+   inherited::mcbtBinaryTable[Operation::T##TypeOperation].setArray(                              \
+      new Approximate::Details::GenericAndConstantResultSourceBinaryConstraintMethod<TypeDomainTraits>(\
+         &UnsignedIntElement::constraint##TypeOperation,                                          \
+         &UnsignedIntElement::constraint##TypeOperation##WithConstantResultOnArgResult,           \
+         &UnsignedIntElement::constraint##TypeOperation##WithConstantResultOnArgSource));
+
+template <class TypeDomainTraits>
+UnsignedIntElement::MethodConstraintTable<TypeDomainTraits>::MethodConstraintTable() {
+#include "StandardClasses/UndefineNew.h"
+   DefineInitConstraintBinaryMethodTable(PlusAssign)
+   DefineInitConstraintBinaryMethodTable(MinusAssign)
+   DefineInitConstraintBinaryMethodTableDouble(TimesAssign)
+   DefineInitConstraintBinaryMethodTableTriple(DivideAssign)
+   DefineInitConstraintBinaryMethodTableTriple(ModuloAssign)
+   DefineInitConstraintBinaryMethodTableDouble(BitOrAssign)
+   DefineInitConstraintBinaryMethodTableDouble(BitAndAssign)
+   DefineInitConstraintBinaryMethodTableDouble(BitExclusiveOrAssign)
+   DefineInitConstraintOBinaryMethodTableDouble(LeftShiftAssign, ShiftOrRotateAssign, BinaryNoPropagation)
+   DefineInitConstraintOBinaryMethodTableDouble(RightShiftAssign, ShiftOrRotateAssign, BinaryNoPropagation)
+   DefineInitConstraintOBinaryMethodTableDouble(LeftRotateAssign, ShiftOrRotateAssign, RotateAssign)
+   DefineInitConstraintOBinaryMethodTableDouble(RightRotateAssign, ShiftOrRotateAssign, RotateAssign)
+#include "StandardClasses/DefineNew.h"
+}
+#undef DefineInitConstraintBinaryMethodTableTriple
+#undef DefineInitConstraintOBinaryMethodTableDouble
+#undef DefineInitConstraintBinaryMethodTableDouble
+#undef DefineInitConstraintBinaryMethodTableGeneric
+#undef DefineInitConstraintBinaryMethodTable
+
+/* Definition of the table of the query methods */
+
+template <class TypeDomainTraits>
+UnsignedIntElement::MethodQueryTable<TypeDomainTraits>::MethodQueryTable() {
+#include "StandardClasses/UndefineNew.h"
+   VirtualElement::FunctionQueryTable* functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TExtern).absorbFunctionTable(functionTable);
+   functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TOperation).absorbFunctionTable(functionTable);
+   UnsignedIntElement::fillTable(*this, (UnsignedIntElement*) nullptr);
+   (*functionTable)[QueryOperation::TOInverseCast].resetMethod(&UnsignedIntElement::queryInverseCastOperation);
+   functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TDuplication).absorbFunctionTable(functionTable);
+   functionTable->setSize(3);
+   (*functionTable)[QueryOperation::TCDClone].setMethod(&UnsignedIntElement::queryCopy);
+   (*functionTable)[QueryOperation::TCDSpecialize].setMethod(&UnsignedIntElement::querySpecialize);
+
+   functionTable = &inherited::elementAt(VirtualQueryOperation::TExtern).getFunctionTable();
+   (*functionTable)[QueryOperation::TESigned].resetMethod(&UnsignedIntElement::queryIsSigned);
+
+   functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TSimplification).absorbFunctionTable(functionTable);
+   functionTable->setSize(QueryOperation::EndOfTypeSimplification);
+   (*functionTable)[QueryOperation::TSUndefined].setMethod(&UnsignedIntElement::queryIdentity);
+   (*functionTable)[QueryOperation::TSConstant].setMethod(&UnsignedIntElement::queryIdentity);
+   (*functionTable)[QueryOperation::TSInterval].setMethod(&UnsignedIntElement::queryIdentity);
+   (*functionTable)[QueryOperation::TSConstantDisjunction].setMethod(&UnsignedIntElement::queryIdentity);
+   
+   Approximate::Details::MethodQuerySecondDecisionNode<TypeDomainTraits>* methodTable = new Approximate::Details::MethodQuerySecondDecisionNode<TypeDomainTraits>();
+   inherited::elementAt(VirtualQueryOperation::TCompareSpecial).absorbMethodTable(methodTable);
+   methodTable->setSize(QueryOperation::EndOfTypeCompareSpecial);
+   (*methodTable)[QueryOperation::TCSGuard].setMethod(&UnsignedIntElement::queryGuardAll);
+   (*methodTable)[QueryOperation::TCSNatural].setMethod(&UnsignedIntElement::queryCompareSpecial);
+   (*methodTable)[QueryOperation::TCSSigned].setMethod(&UnsignedIntElement::queryCompareSpecial);
+   (*methodTable)[QueryOperation::TCSUnsigned].setMethod(&UnsignedIntElement::queryCompareSpecial);
+   (*methodTable)[QueryOperation::TCSBitDomain].setMethod(&UnsignedIntElement::queryBitDomain);
+   (*methodTable)[QueryOperation::TCSBound].setMethod(&UnsignedIntElement::queryBound);
+#include "StandardClasses/DefineNew.h"
+}
+
+//   DefineInitPromotionMethodTable(Opposite)
+
+#define DefineInitMethodTable(TypeOperation)                                                      \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&Domain::apply##TypeOperation);
+#define DefineInitPromotionMethodTable(TypeOperation)                                             \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&Domain::applyPromoted);
+#define DefineInitPromotionAssignMethodTable(TypeOperation)                                       \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&Domain::applyPromotedAssign);
+#define DefineInitOMethodTable(TypeOperation, TypeElement)                                        \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&Domain::apply##TypeOperation##TypeElement);
+
+#define DefineInitConstraintBinaryMethodTable(TypeOperation)                                      \
+   inherited::mcbtBinaryTable[Operation::T##TypeOperation].setMethod(&Domain::constraint##TypeOperation);
+
+#define DefineInitConstraintBinaryMethodTableGeneric(TypeOperation)                               \
+   inherited::mcbtBinaryTable[Operation::T##TypeOperation].setArray(                              \
+      new Approximate::Details::GenericBinaryConstraintMethod<TypeDomainTraits>(&Domain::constraint##TypeOperation));
+
+#define DefineInitConstraintBinaryMethodTableDouble(TypeOperation)                                \
+   inherited::mcbtBinaryTable[Operation::T##TypeOperation].setArray(                              \
+      new Approximate::Details::GenericAndConstantResultBinaryConstraintMethod<TypeDomainTraits>( \
+         &Domain::constraint##TypeOperation, &Domain::constraint##TypeOperation##WithConstantResult));
+
+#define DefineInitConstraintOBinaryMethodTableDouble(TypeOperation, TypeResultOperation, TypeGenericMethod)\
+   inherited::mcbtBinaryTable[Operation::T##TypeOperation].setArray(                              \
+      new Approximate::Details::GenericAndConstantResultBinaryConstraintMethod<TypeDomainTraits>( \
+         &Domain::constraint##TypeGenericMethod,                                                  \
+         &Domain::constraint##TypeResultOperation##WithConstantResult));
+
+#define DefineInitConstraintBinaryMethodTableTriple(TypeOperation)                                \
+   inherited::mcbtBinaryTable[Operation::T##TypeOperation].setArray(                              \
+      new Approximate::Details::GenericAndConstantResultSourceBinaryConstraintMethod<TypeDomainTraits>(\
+         &Domain::constraint##TypeOperation,                                                      \
+         &Domain::constraint##TypeOperation##WithConstantResultOnArgResult,                       \
+         &Domain::constraint##TypeOperation##WithConstantResultOnArgSource));
+
+#define DefineImplementSubElement(TypeCast)                                                      \
+template <class TypeDomainTraits>                                                                \
+TypeCast##Element::MethodApplyTable<TypeDomainTraits>::MethodApplyTable() {                      \
+   inherited::clear();                                                                           \
+   typedef TypeCast##Element Domain;                                                             \
+                                                                                                 \
+   DefineInitMethodTable(PrevAssign)                                                             \
+   DefineInitMethodTable(NextAssign)                                                             \
+   DefineInitPromotionAssignMethodTable(PlusAssign)                                              \
+   DefineInitPromotionAssignMethodTable(MinusAssign)                                             \
+   DefineInitSignedAssignMethodTable(MinusSigned)                                                \
+   DefineInitPromotionAssignMethodTable(TimesAssign)                                             \
+   DefineInitPromotionAssignMethodTable(DivideAssign)                                            \
+   DefineInitPromotionAssignMethodTable(OppositeAssign)                                          \
+   DefineInitPromotionAssignMethodTable(ModuloAssign)                                            \
+   DefineInitMethodTable(BitOrAssign)                                                            \
+   DefineInitMethodTable(BitAndAssign)                                                           \
+   DefineInitMethodTable(BitExclusiveOrAssign)                                                   \
+   DefineInitMethodTable(BitNegateAssign)                                                        \
+   DefineInitOMethodTable(LeftShiftAssign, IntElement)                                           \
+   DefineInitOMethodTable(RightShiftAssign, IntElement)                                          \
+   DefineInitOMethodTable(LeftRotateAssign, IntElement)                                          \
+   DefineInitOMethodTable(RightRotateAssign, IntElement)                                         \
+}                                                                                                \
+                                                                                                 \
+template <class TypeDomainTraits>                                                                \
+TypeCast##Element::MethodConstraintTable<TypeDomainTraits>::MethodConstraintTable() {            \
+   typedef TypeCast##Element Domain;                                                             \
+   DefineInitConstraintBinaryMethodTable(PlusAssign)                                             \
+   DefineInitConstraintBinaryMethodTable(MinusAssign)                                            \
+   DefineInitConstraintBinaryMethodTableDouble(TimesAssign)                                      \
+   DefineInitConstraintBinaryMethodTableTriple(DivideAssign)                                     \
+   DefineInitConstraintBinaryMethodTableTriple(ModuloAssign)                                     \
+   DefineInitConstraintBinaryMethodTableDouble(BitOrAssign)                                      \
+   DefineInitConstraintBinaryMethodTableDouble(BitAndAssign)                                     \
+   DefineInitConstraintBinaryMethodTableDouble(BitExclusiveOrAssign)                             \
+   DefineInitConstraintOBinaryMethodTableDouble(LeftShiftAssign, ShiftOrRotateAssign, BinaryNoPropagation)\
+   DefineInitConstraintOBinaryMethodTableDouble(RightShiftAssign, ShiftOrRotateAssign, BinaryNoPropagation)\
+   DefineInitConstraintOBinaryMethodTableDouble(LeftRotateAssign, ShiftOrRotateAssign, RotateAssign)\
+   DefineInitConstraintOBinaryMethodTableDouble(RightRotateAssign, ShiftOrRotateAssign, RotateAssign)\
+}                                                                                                \
+                                                                                                 \
+template <class TypeDomainTraits>                                                                \
+TypeCast##Element::MethodQueryTable<TypeDomainTraits>::MethodQueryTable() {                      \
+   VirtualElement::FunctionQueryTable* functionTable = new VirtualElement::FunctionQueryTable(); \
+   inherited::elementAt(VirtualQueryOperation::TExtern).absorbFunctionTable(functionTable);      \
+   functionTable = new VirtualElement::FunctionQueryTable();                                     \
+   inherited::elementAt(VirtualQueryOperation::TOperation).absorbFunctionTable(functionTable);   \
+   TypeCast##Element::fillTable(*this, (TypeCast##Element*) nullptr);                            \
+   (*functionTable)[QueryOperation::TOInverseCast].resetMethod(&TypeCast##Element::queryInverseCastOperation);\
+   functionTable = new VirtualElement::FunctionQueryTable();                                     \
+   inherited::elementAt(VirtualQueryOperation::TDuplication).absorbFunctionTable(functionTable); \
+   functionTable->setSize(3);                                                                    \
+   (*functionTable)[QueryOperation::TCDClone].setMethod(&TypeCast##Element::queryCopy);          \
+   (*functionTable)[QueryOperation::TCDSpecialize].setMethod(&TypeCast##Element::querySpecialize);\
+                                                                                                 \
+   functionTable = &inherited::elementAt(VirtualQueryOperation::TExtern).getFunctionTable();     \
+   (*functionTable)[QueryOperation::TESigned].resetMethod(&TypeCast##Element::queryIsSigned);    \
+                                                                                                 \
+   functionTable = new VirtualElement::FunctionQueryTable();                                     \
+   inherited::elementAt(VirtualQueryOperation::TSimplification).absorbFunctionTable(functionTable);\
+   functionTable->setSize(QueryOperation::EndOfTypeSimplification);                              \
+   (*functionTable)[QueryOperation::TSUndefined].setMethod(&TypeCast##Element::queryIdentity);   \
+   (*functionTable)[QueryOperation::TSConstant].setMethod(&TypeCast##Element::queryIdentity);    \
+   (*functionTable)[QueryOperation::TSInterval].setMethod(&TypeCast##Element::queryIdentity);    \
+   (*functionTable)[QueryOperation::TSConstantDisjunction].setMethod(&TypeCast##Element::queryIdentity);\
+                                                                                                 \
+   Approximate::Details::MethodQuerySecondDecisionNode<TypeDomainTraits>* methodTable = new Approximate::Details::MethodQuerySecondDecisionNode<TypeDomainTraits>();\
+   inherited::elementAt(VirtualQueryOperation::TCompareSpecial).absorbMethodTable(methodTable);  \
+   methodTable->setSize(QueryOperation::EndOfTypeCompareSpecial);                                \
+   (*methodTable)[QueryOperation::TCSGuard].setMethod(&TypeCast##Element::queryGuardAll);        \
+   (*methodTable)[QueryOperation::TCSNatural].setMethod(&TypeCast##Element::queryCompareSpecial);\
+   (*methodTable)[QueryOperation::TCSSigned].setMethod(&TypeCast##Element::queryCompareSpecial); \
+   (*methodTable)[QueryOperation::TCSUnsigned].setMethod(&TypeCast##Element::queryCompareSpecial);\
+   (*methodTable)[QueryOperation::TCSBitDomain].setMethod(&TypeCast##Element::queryBitDomain);   \
+   (*methodTable)[QueryOperation::TCSBound].setMethod(&TypeCast##Element::queryBound);           \
+}
+
+#define DefineImplementLongElement(TypeCast)                                                     \
+template <class TypeDomainTraits>                                                                \
+TypeCast##Element::MethodApplyTable<TypeDomainTraits>::MethodApplyTable() {                      \
+   inherited::clear();                                                                           \
+   typedef TypeCast##Element Domain;                                                             \
+                                                                                                 \
+   DefineInitMethodTable(PrevAssign)                                                             \
+   DefineInitMethodTable(NextAssign)                                                             \
+   DefineInitMethodTable(PlusAssign)                                                             \
+   DefineInitMethodTable(MinusAssign)                                                            \
+   DefineInitSignedAssignMethodTable(MinusSigned)                                                \
+   DefineInitMethodTable(TimesAssign)                                                            \
+   DefineInitMethodTable(DivideAssign)                                                           \
+   DefineInitMethodTable(OppositeAssign)                                                         \
+   DefineInitMethodTable(ModuloAssign)                                                           \
+   DefineInitMethodTable(BitOrAssign)                                                            \
+   DefineInitMethodTable(BitAndAssign)                                                           \
+   DefineInitMethodTable(BitExclusiveOrAssign)                                                   \
+   DefineInitMethodTable(BitNegateAssign)                                                        \
+   DefineInitOMethodTable(LeftShiftAssign, IntElement)                                           \
+   DefineInitOMethodTable(RightShiftAssign, IntElement)                                          \
+   DefineInitOMethodTable(LeftRotateAssign, IntElement)                                          \
+   DefineInitOMethodTable(RightRotateAssign, IntElement)                                         \
+}                                                                                                \
+                                                                                                 \
+template <class TypeDomainTraits>                                                                \
+TypeCast##Element::MethodConstraintTable<TypeDomainTraits>::MethodConstraintTable() {            \
+   typedef TypeCast##Element Domain;                                                             \
+   DefineInitConstraintBinaryMethodTable(PlusAssign)                                             \
+   DefineInitConstraintBinaryMethodTable(MinusAssign)                                            \
+   DefineInitConstraintBinaryMethodTableDouble(TimesAssign)                                      \
+   DefineInitConstraintBinaryMethodTableTriple(DivideAssign)                                     \
+   DefineInitConstraintBinaryMethodTableTriple(ModuloAssign)                                     \
+   DefineInitConstraintBinaryMethodTableDouble(BitOrAssign)                                      \
+   DefineInitConstraintBinaryMethodTableDouble(BitAndAssign)                                     \
+   DefineInitConstraintBinaryMethodTableDouble(BitExclusiveOrAssign)                             \
+   DefineInitConstraintOBinaryMethodTableDouble(LeftShiftAssign, ShiftOrRotateAssign, BinaryNoPropagation)\
+   DefineInitConstraintOBinaryMethodTableDouble(RightShiftAssign, ShiftOrRotateAssign, BinaryNoPropagation)\
+   DefineInitConstraintOBinaryMethodTableDouble(LeftRotateAssign, ShiftOrRotateAssign, RotateAssign)\
+   DefineInitConstraintOBinaryMethodTableDouble(RightRotateAssign, ShiftOrRotateAssign, RotateAssign)\
+}                                                                                                \
+                                                                                                 \
+template <class TypeDomainTraits>                                                                \
+TypeCast##Element::MethodQueryTable<TypeDomainTraits>::MethodQueryTable() {                      \
+   VirtualElement::FunctionQueryTable* functionTable = new VirtualElement::FunctionQueryTable(); \
+   inherited::elementAt(VirtualQueryOperation::TExtern).absorbFunctionTable(functionTable);      \
+   functionTable = new VirtualElement::FunctionQueryTable();                                     \
+   inherited::elementAt(VirtualQueryOperation::TOperation).absorbFunctionTable(functionTable);   \
+   TypeCast##Element::fillTable(*this, (TypeCast##Element*) nullptr);                            \
+   (*functionTable)[QueryOperation::TOInverseCast].resetMethod(&TypeCast##Element::queryInverseCastOperation);\
+   functionTable = new VirtualElement::FunctionQueryTable();                                     \
+   inherited::elementAt(VirtualQueryOperation::TDuplication).absorbFunctionTable(functionTable); \
+   functionTable->setSize(3);                                                                    \
+   (*functionTable)[QueryOperation::TCDClone].setMethod(&TypeCast##Element::queryCopy);          \
+   (*functionTable)[QueryOperation::TCDSpecialize].setMethod(&TypeCast##Element::querySpecialize);\
+                                                                                                 \
+   functionTable = &inherited::elementAt(VirtualQueryOperation::TExtern).getFunctionTable();     \
+   (*functionTable)[QueryOperation::TESigned].resetMethod(&TypeCast##Element::queryIsSigned);    \
+                                                                                                 \
+   functionTable = new VirtualElement::FunctionQueryTable();                                     \
+   inherited::elementAt(VirtualQueryOperation::TSimplification).absorbFunctionTable(functionTable);\
+   functionTable->setSize(QueryOperation::EndOfTypeSimplification);                              \
+   (*functionTable)[QueryOperation::TSUndefined].setMethod(&TypeCast##Element::queryIdentity);   \
+   (*functionTable)[QueryOperation::TSConstant].setMethod(&TypeCast##Element::queryIdentity);    \
+   (*functionTable)[QueryOperation::TSInterval].setMethod(&TypeCast##Element::queryIdentity);    \
+   (*functionTable)[QueryOperation::TSConstantDisjunction].setMethod(&TypeCast##Element::queryIdentity);\
+                                                                                                 \
+   Approximate::Details::MethodQuerySecondDecisionNode<TypeDomainTraits>* methodTable = new Approximate::Details::MethodQuerySecondDecisionNode<TypeDomainTraits>();\
+   inherited::elementAt(VirtualQueryOperation::TCompareSpecial).absorbMethodTable(methodTable);  \
+   methodTable->setSize(QueryOperation::EndOfTypeCompareSpecial);                                \
+   (*methodTable)[QueryOperation::TCSGuard].setMethod(&TypeCast##Element::queryGuardAll);        \
+   (*methodTable)[QueryOperation::TCSNatural].setMethod(&TypeCast##Element::queryCompareSpecial);\
+   (*methodTable)[QueryOperation::TCSSigned].setMethod(&TypeCast##Element::queryCompareSpecial); \
+   (*methodTable)[QueryOperation::TCSUnsigned].setMethod(&TypeCast##Element::queryCompareSpecial);\
+   (*methodTable)[QueryOperation::TCSBitDomain].setMethod(&TypeCast##Element::queryBitDomain);   \
+   (*methodTable)[QueryOperation::TCSBound].setMethod(&TypeCast##Element::queryBound);           \
+}
+
+#include "StandardClasses/UndefineNew.h"
+
+#define DefineInitSignedAssignMethodTable(TypeOperation) 
+
+DefineImplementSubElement(Char)
+DefineImplementSubElement(SignedChar)
+DefineImplementSubElement(Short)
+DefineImplementLongElement(Long)
+
+#undef DefineInitSignedAssignMethodTable
+
+#define DefineInitSignedAssignMethodTable(TypeOperation)                                         \
+   inherited::elementAt(Operation::T##TypeOperation##Assign).setMethod(&Domain::apply##TypeOperation);
+
+DefineImplementSubElement(UnsignedChar)
+DefineImplementSubElement(UnsignedShort)
+DefineImplementLongElement(UnsignedLong)
+
+#undef DefineInitSignedAssignMethodTable
+   
+#include "StandardClasses/DefineNew.h"
+
+#undef DefineImplementSubElement
+#undef DefineImplementLongElement
+
+#undef DefineInitMethodTable
+#undef DefineInitPromotionMethodTable
+#undef DefineInitPromotionAssignMethodTable
+#undef DefineInitOMethodTable
+
+#undef DefineInitConstraintBinaryMethodTableTriple
+#undef DefineInitConstraintOBinaryMethodTableDouble
+#undef DefineInitConstraintBinaryMethodTableDouble
+#undef DefineInitConstraintBinaryMethodTableGeneric
+#undef DefineInitConstraintBinaryMethodTable
+
+}}}} // end of namespace Analyzer::Scalar::Integer::Approximate
+

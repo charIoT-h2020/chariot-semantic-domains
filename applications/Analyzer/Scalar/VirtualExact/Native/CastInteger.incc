@@ -1,0 +1,224 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : CastInteger.incc
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of the cast methods between different integer classes
+//     that are used by the compilation constants and by the scalar elements
+//     in simulation/symbolic execution.
+//   All this stuff is rather defined for source code analysis.
+//
+
+/* DefineTypeObject                  : Type of the element                                    */
+/* DefineIsFloat                     : Defined iff DefineTypeObject is a floating point class */
+
+#ifdef DefineIsFloat
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const Integer::VirtualExact::TCharElement<TypeBase>& source, EvaluationEnvironment&)
+   {  inheritedImplementation::assign((double) source.implementation().getElement()); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const Integer::VirtualExact::TSignedCharElement<TypeBase>& source, EvaluationEnvironment&)
+   {  inheritedImplementation::assign((double) source.implementation().getElement()); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const Integer::VirtualExact::TUnsignedCharElement<TypeBase>& source, EvaluationEnvironment&)
+   {  inheritedImplementation::assign((double) source.implementation().getElement()); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const Integer::VirtualExact::TShortElement<TypeBase>& source, EvaluationEnvironment&)
+   {  inheritedImplementation::assign((double) source.implementation().getElement()); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const Integer::VirtualExact::TUnsignedShortElement<TypeBase>& source, EvaluationEnvironment&)
+   {  inheritedImplementation::assign((double) source.implementation().getElement()); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const Integer::VirtualExact::TIntElement<TypeBase>& source, EvaluationEnvironment&)
+   {  inheritedImplementation::assign((double) source.implementation().getElement()); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const Integer::VirtualExact::TUnsignedIntElement<TypeBase>& source, EvaluationEnvironment&)
+   {  inheritedImplementation::assign((double) source.implementation().getElement()); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const Integer::VirtualExact::TLongElement<TypeBase>& source, EvaluationEnvironment&)
+   {  inheritedImplementation::assign((double) source.implementation().getElement()); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const Integer::VirtualExact::TUnsignedLongElement<TypeBase>& source, EvaluationEnvironment&)
+   {  inheritedImplementation::assign((double) source.implementation().getElement()); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const TFloatElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.implementation(), env); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const TDoubleElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.implementation(), env); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const TLongDoubleElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.implementation(), env); }
+
+#else // !DefineIsFloat
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const TCharElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.implementation(), env); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const TSignedCharElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.implementation(), env); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const TUnsignedCharElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.implementation(), env); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const TShortElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.implementation(), env); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const TUnsignedShortElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.implementation(), env); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const TIntElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.implementation(), env); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const TUnsignedIntElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.implementation(), env); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const TLongElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.implementation(), env); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const TUnsignedLongElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.implementation(), env); }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const Floating::VirtualExact::TFloatElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign((int) source.implementation().getElement());
+      if (source.implementation().getExponent() >= inheritedImplementation::getSize()) {
+         if (source.implementation().getElement() >= 0)
+            env.setPositiveOverflow();
+         else
+            env.setNegativeOverflow();
+      };
+   }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const Floating::VirtualExact::TDoubleElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign((int) source.implementation().getElement());
+      if (source.implementation().getExponent() >= inheritedImplementation::getSize()) {
+         if (source.implementation().getElement() >= 0)
+            env.setPositiveOverflow();
+         else
+            env.setNegativeOverflow();
+      };
+   }
+
+template <class TypeBase>
+void
+DefineTypeObject<TypeBase>::assign(const Floating::VirtualExact::TLongDoubleElement<TypeBase>& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign((int) source.implementation().getElement());
+      if (source.implementation().getExponent() >= inheritedImplementation::getSize()) {
+         if (source.implementation().getElement() >= 0)
+            env.setPositiveOverflow();
+         else
+            env.setNegativeOverflow();
+      };
+   }
+
+#endif // !DefineIsFloat
+
+#define DefineApplyCastImplementation(TypeDomain, TypeOperator)                                    \
+template <class TypeBase>                                                                          \
+bool                                                                                               \
+DefineTypeObject<TypeBase>::applyCast##TypeOperator(const Operation&, EvaluationEnvironment& env)  \
+   {  TypeBase* result = nullptr;                                                                     \
+      env.storeResult(result = inherited::create##TypeOperator##Element(typename TypeBase::Init()));\
+      ((TypeDomain::VirtualExact::T##TypeOperator##Element<TypeBase>&) *result).assign(*this, env);              \
+      return true;                                                                                 \
+   }
+
+DefineApplyCastImplementation(Integer, Char)
+DefineApplyCastImplementation(Integer, SignedChar)
+DefineApplyCastImplementation(Integer, UnsignedChar)
+DefineApplyCastImplementation(Integer, Short)
+DefineApplyCastImplementation(Integer, UnsignedShort)
+DefineApplyCastImplementation(Integer, Int)
+DefineApplyCastImplementation(Integer, UnsignedInt)
+DefineApplyCastImplementation(Integer, Long)
+DefineApplyCastImplementation(Integer, UnsignedLong)
+DefineApplyCastImplementation(Floating, Float)
+DefineApplyCastImplementation(Floating, Double)
+DefineApplyCastImplementation(Floating, LongDouble)
+
+#undef DefineApplyCastImplementation
+
+template <class TypeBase>
+bool
+DefineTypeObject<TypeBase>::applyCompare(const Operation& operation, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const thisType*>(&env.getFirstArgument()))
+   ComparisonResult comparisonResult = compare((const thisType&) env.getFirstArgument());
+   Operation::Type type = operation.getType();
+   bool result = (comparisonResult == CRLess)
+      ? ((type < Operation::TCompareEqual) || (type == Operation::TCompareDifferent))
+         : ((comparisonResult == CRGreater)
+      ? (type > Operation::TCompareEqual) : ((comparisonResult == CREqual)
+      ? (type == Operation::TCompareEqual) : false));
+   env.storeResult(TypeBase::createIntElement((int) result));
+   return true;
+}
+
+template <class TypeBase>
+bool
+DefineTypeObject<TypeBase>::applyMinAssign(const Operation& operation, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const thisType*>(&env.getFirstArgument()))
+   const thisType& source = (const thisType&) env.getFirstArgument();
+   if (inheritedImplementation::getElement() > source.inheritedImplementation::getElement())
+      env.storeResult(source.createSCopy());
+   return true;
+}
+
+template <class TypeBase>
+bool
+DefineTypeObject<TypeBase>::applyMaxAssign(const Operation& operation, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const thisType*>(&env.getFirstArgument()))
+   const thisType& source = (const thisType&) env.getFirstArgument();
+   if (inheritedImplementation::getElement() < source.inheritedImplementation::getElement())
+      env.storeResult(source.createSCopy());
+   return true;
+}
+
+

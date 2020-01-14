@@ -1,0 +1,28 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : GeneralVirtualExact.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of a an intermediate hierarchy of classes
+//     that are very helpful to define the compilation constants
+//     and the scalar elements used in simulation/symbolic execution.
+//   All this stuff is rather defined for host independent code analysis.
+//
+
+#ifndef Analyzer_Scalar_VirtualExact_GeneralVirtualExactTEMPLATE
+#define Analyzer_Scalar_VirtualExact_GeneralVirtualExactTEMPLATE
+
+#include "Numerics/Integer.template"
+#include "Numerics/HostFloating.template"
+#include "Analyzer/Scalar/VirtualExact/General/BitElement.template"
+#include "Analyzer/Scalar/VirtualExact/General/MultiBitElement.template"
+#include "Analyzer/Scalar/VirtualExact/General/MultiFloatElement.template"
+#include "Analyzer/Scalar/VirtualExact/TopElement.template"
+
+#endif // Analyzer_Scalar_VirtualExact_GeneralVirtualExactTEMPLATE
+
+

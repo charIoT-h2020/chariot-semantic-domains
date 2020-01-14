@@ -1,0 +1,70 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : FloatElement.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of floating-point classes that are very helpful to define
+//     the compilation constants and the scalar elements used in
+//     simulation/symbolic execution.
+//   All this stuff is rather defined for source code analysis.
+//
+
+#include "Analyzer/Scalar/VirtualExact/Native/FloatElement.h"
+// #include "Analyzer/Scalar/Scalar.hpp"
+
+namespace Analyzer { namespace Scalar { namespace Floating { namespace VirtualExact {
+
+#define DefineImplementsUnaryMethod(TypeOperation)                                               \
+template <class TypeBase>                                                                        \
+bool                                                                                             \
+DefineTypeObject<TypeBase>::apply##TypeOperation(const Operation& operation, EvaluationEnvironment& env) \
+   {  inheritedImplementation::apply((const TypeOperation##Operation&) operation, env);          \
+      return true;                                                                               \
+   }
+
+#define DefineImplementsBinaryMethod(TypeOperation)                                              \
+template <class TypeBase>                                                                        \
+bool                                                                                             \
+DefineTypeObject<TypeBase>::apply##TypeOperation(const Operation& operation, EvaluationEnvironment& env) \
+   {  inheritedImplementation::apply((const TypeOperation##Operation&) operation, getSameArgument(env), env); \
+      return true;                                                                               \
+   }
+
+#define DefineInitMethodTable(TypeOperation)                                                      \
+   ThisClass::elementAt(Operation::T##TypeOperation).setMethod(&DefineTypeObject<TypeBase>::apply##TypeOperation);
+
+#define DefineInitConstMethodTable(TypeOperation)                                                 \
+   ThisClass::elementAt(Operation::T##TypeOperation).setMethod(&DefineTypeObject<TypeBase>::applyConst);
+
+#define DefineInitOMethodTable(TypeOperation, TypeMethod)                                         \
+   ThisClass::elementAt(Operation::T##TypeOperation).setMethod(&DefineTypeObject<TypeBase>::apply##TypeMethod);
+
+#define DefineIsFloat
+#define DefineTypeObject TFloatElement
+#include "Analyzer/Scalar/VirtualExact/Native/FloatElement.incc"
+#undef DefineTypeObject
+
+#define DefineTypeObject TDoubleElement
+#define DefineIncludeFloatOperation
+#include "Analyzer/Scalar/VirtualExact/Native/FloatElement.incc"
+#undef DefineIncludeFloatOperation
+#undef DefineTypeObject
+
+#define DefineTypeObject TLongDoubleElement
+#include "Analyzer/Scalar/VirtualExact/Native/FloatElement.incc"
+#undef DefineTypeObject
+
+#undef DefineIsFloat
+
+#undef DefineImplementsUnaryMethod
+#undef DefineImplementsBinaryMethod
+#undef DefineInitMethodTable
+#undef DefineInitConstMethodTable
+#undef DefineInitOMethodTable
+
+}}}} // end of namespace Analyzer::VirtualExact
+

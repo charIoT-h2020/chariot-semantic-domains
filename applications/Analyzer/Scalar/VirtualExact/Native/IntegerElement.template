@@ -1,0 +1,269 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : IntegerElement.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of integer classes that are very helpful to define
+//     the compilation constants and the scalar elements used in
+//     simulation/symbolic execution.
+//   All this stuff is rather defined for source code analysis.
+//
+
+namespace Analyzer { namespace Scalar { namespace Integer { namespace VirtualExact {
+
+#define DefineImplementsUnaryMethod(TypeOperation)                                               \
+template <class TypeBase>                                                                        \
+bool                                                                                             \
+DefineTypeObject<TypeBase>::apply##TypeOperation(const Operation& operation, EvaluationEnvironment& env) \
+   {  inheritedImplementation::apply((const TypeOperation##Operation&) operation, env);\
+      return true;                                                                               \
+   }
+
+#define DefineImplementsBinaryMethod(TypeOperation)                                              \
+template <class TypeBase>                                                                        \
+bool                                                                                             \
+DefineTypeObject<TypeBase>::apply##TypeOperation(const Operation& operation, EvaluationEnvironment& env) \
+   {  inheritedImplementation::apply((const TypeOperation##Operation&) operation, getSameArgument(env), env);\
+      return true;                                                                               \
+   }
+
+#define DefineImplementsOBinaryMethod(TypeOperation, TypeArg)                                    \
+template <class TypeBase>                                                                        \
+bool                                                                                             \
+DefineTypeObject<TypeBase>::apply##TypeOperation##TypeArg(const Operation& operation, EvaluationEnvironment& env) \
+   {  inheritedImplementation::apply((const TypeOperation##Operation&) operation,                \
+         ((const T##TypeArg<TypeBase>&) env.getFirstArgument()).getInt(), env);                  \
+      return true;                                                                               \
+   }
+
+#define DefineImplementsPromotionAssignMethod(TypeOperation)                                     \
+template <class TypeBase>                                                                        \
+bool                                                                                             \
+DefineTypeObject<TypeBase>::apply##TypeOperation(const Operation& operation, EvaluationEnvironment& env) \
+   {  return applyPromotedAssignOperation(operation, env); }
+
+#define DefineImplementsPromotionMethod(TypeOperation)                                           \
+template <class TypeBase>                                                                        \
+bool                                                                                             \
+DefineTypeObject<TypeBase>::apply##TypeOperation(const Operation& operation, EvaluationEnvironment& env) \
+   {  return applyPromotedOperation(operation, env); }
+
+#define DefineInitMethodTable(TypeOperation)                                                     \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&DefineTypeObject<TypeBase>::apply##TypeOperation);
+
+#define DefineInitOMethodTable(TypeOperation, TypeMethod)                                        \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&DefineTypeObject<TypeBase>::apply##TypeMethod);
+
+/******************************************/
+/* Implementation of the class IntElement */
+/******************************************/
+
+#define DefineTypeObject TIntElement
+template <class TypeBase>
+TIntElement<TypeBase>::MethodApplyTable::MethodApplyTable() {
+#include "StandardClasses/UndefineNew.h"
+   inherited::clear();
+   DefineInitMethodTable(CastChar)
+   DefineInitMethodTable(CastSignedChar)
+   DefineInitMethodTable(CastUnsignedChar)
+   DefineInitMethodTable(CastShort)
+   DefineInitMethodTable(CastUnsignedShort)
+   DefineInitMethodTable(CastInt)
+   DefineInitMethodTable(CastUnsignedInt)
+   DefineInitMethodTable(CastLong)
+   DefineInitMethodTable(CastUnsignedLong)
+   DefineInitMethodTable(CastFloat)
+   DefineInitMethodTable(CastDouble)
+   DefineInitMethodTable(CastLongDouble)
+
+   DefineInitOMethodTable(CompareLess, Compare)
+   DefineInitOMethodTable(CompareLessOrEqual, Compare)
+   DefineInitOMethodTable(CompareEqual, Compare)
+   DefineInitOMethodTable(CompareDifferent, Compare)
+   DefineInitOMethodTable(CompareGreaterOrEqual, Compare)
+   DefineInitOMethodTable(CompareGreater, Compare)
+
+   DefineInitMethodTable(PrevAssign)
+   DefineInitMethodTable(NextAssign)
+   DefineInitMethodTable(PlusAssign)
+   DefineInitMethodTable(MinusAssign)
+   DefineInitMethodTable(TimesAssign)
+   DefineInitMethodTable(DivideAssign)
+   DefineInitMethodTable(OppositeAssign)
+   DefineInitMethodTable(ModuloAssign)
+   DefineInitMethodTable(BitOrAssign)
+   DefineInitMethodTable(BitAndAssign)
+   DefineInitMethodTable(BitExclusiveOrAssign)
+   DefineInitMethodTable(BitNegateAssign)
+   DefineInitMethodTable(LeftShiftAssign)
+   DefineInitMethodTable(RightShiftAssign)
+   DefineInitMethodTable(LogicalAndAssign)
+   DefineInitMethodTable(LogicalOrAssign)
+   DefineInitMethodTable(LogicalNegateAssign)
+
+   DefineInitMethodTable(MinAssign)
+   DefineInitMethodTable(MaxAssign)
+#include "StandardClasses/DefineNew.h"
+}
+
+template <class TypeBase>
+typename TIntElement<TypeBase>::MethodApplyTable TIntElement<TypeBase>::matMethodTable;
+
+/* Implementation of the template class TIntElement */
+
+#include "Analyzer/Scalar/VirtualExact/Native/CastInteger.incc"
+
+DefineImplementsUnaryMethod(PrevAssign)
+DefineImplementsUnaryMethod(NextAssign)
+DefineImplementsBinaryMethod(PlusAssign)
+DefineImplementsBinaryMethod(MinusAssign)
+DefineImplementsBinaryMethod(TimesAssign)
+DefineImplementsBinaryMethod(DivideAssign)
+DefineImplementsUnaryMethod(OppositeAssign)
+DefineImplementsBinaryMethod(ModuloAssign)
+DefineImplementsBinaryMethod(BitOrAssign)
+DefineImplementsBinaryMethod(BitAndAssign)
+DefineImplementsBinaryMethod(BitExclusiveOrAssign)
+DefineImplementsUnaryMethod(BitNegateAssign)
+
+template <class TypeBase>
+bool
+TIntElement<TypeBase>::applyLeftShiftAssign(const Operation& operation, EvaluationEnvironment& env)
+   {  inheritedImplementation::apply((const LeftShiftAssignOperation&) operation,
+         ((const thisType&) env.getFirstArgument()).getInt(), env);
+      return true;
+   }
+
+template <class TypeBase>
+bool
+TIntElement<TypeBase>::applyRightShiftAssign(const Operation& operation, EvaluationEnvironment& env)
+   {  inheritedImplementation::apply((const RightShiftAssignOperation&) operation,
+         ((const thisType&) env.getFirstArgument()).getInt(), env);
+      return true;
+   }
+
+template <class TypeBase>
+bool
+TIntElement<TypeBase>::applyLogicalAndAssign(const Operation& operation, EvaluationEnvironment& env)
+   {  AssumeCondition(dynamic_cast<thisType*>(&env.getFirstArgument()))
+      const thisType& source = (const thisType&) env.getFirstArgument();
+      env.storeResult(TypeBase::createIntElement((getElement() && source.getElement())));
+      return true;
+   }
+   
+template <class TypeBase>
+bool
+TIntElement<TypeBase>::applyLogicalOrAssign(const Operation& operation, EvaluationEnvironment& env)
+   {  AssumeCondition(dynamic_cast<thisType*>(&env.getFirstArgument()))
+      const thisType& source = (const thisType&) env.getFirstArgument();
+      env.storeResult(TypeBase::createIntElement((getElement() || source.getElement())));
+      return true;
+   }
+   
+template <class TypeBase>
+bool
+TIntElement<TypeBase>::applyLogicalNegateAssign(const Operation& operation, EvaluationEnvironment& env)
+   {  env.storeResult(TypeBase::createIntElement(!getElement()));
+      return true;
+   }
+
+#undef DefineTypeObject
+
+/**************************************************/
+/* Implementation of the class UnsignedIntElement */
+/**************************************************/
+
+#define DefineTypeObject TUnsignedIntElement
+#include "Analyzer/Scalar/VirtualExact/Native/CastInteger.incc"
+
+DefineImplementsUnaryMethod(PrevAssign)
+DefineImplementsUnaryMethod(NextAssign)
+DefineImplementsBinaryMethod(PlusAssign)
+DefineImplementsBinaryMethod(MinusAssign)
+DefineImplementsBinaryMethod(TimesAssign)
+DefineImplementsBinaryMethod(DivideAssign)
+DefineImplementsUnaryMethod(OppositeAssign)
+DefineImplementsBinaryMethod(ModuloAssign)
+DefineImplementsBinaryMethod(BitOrAssign)
+DefineImplementsBinaryMethod(BitAndAssign)
+DefineImplementsBinaryMethod(BitExclusiveOrAssign)
+DefineImplementsUnaryMethod(BitNegateAssign)
+DefineImplementsOBinaryMethod(LeftShiftAssign, IntElement)
+DefineImplementsOBinaryMethod(RightShiftAssign, IntElement)
+
+#include "Analyzer/Scalar/VirtualExact/Native/IntegerMethodTable.incc"
+#undef DefineTypeObject
+
+/*******************************************/
+/* Implementation of the class CharElement */
+/*******************************************/
+
+#define DefineTypeObject TCharElement
+#include "Analyzer/Scalar/VirtualExact/Native/IntegerSubElement.incc"
+#undef DefineTypeObject
+
+/*************************************************/
+/* Implementation of the class SignedCharElement */
+/*************************************************/
+
+#define DefineTypeObject TSignedCharElement
+#include "Analyzer/Scalar/VirtualExact/Native/IntegerSubElement.incc"
+#undef DefineTypeObject
+
+/***************************************************/
+/* Implementation of the class UnsignedCharElement */
+/***************************************************/
+
+#define DefineTypeObject TUnsignedCharElement
+#include "Analyzer/Scalar/VirtualExact/Native/IntegerSubElement.incc"
+#undef DefineTypeObject
+
+/********************************************/
+/* Implementation of the class ShortElement */
+/********************************************/
+
+#define DefineTypeObject TShortElement
+#include "Analyzer/Scalar/VirtualExact/Native/IntegerSubElement.incc"
+#undef DefineTypeObject
+
+/****************************************************/
+/* Implementation of the class UnsignedShortElement */
+/****************************************************/
+
+#define DefineTypeObject TUnsignedShortElement
+#include "Analyzer/Scalar/VirtualExact/Native/IntegerSubElement.incc"
+#undef DefineTypeObject
+
+/*******************************************/
+/* Implementation of the class LongElement */
+/*******************************************/
+
+#define DefineTypeObject TLongElement
+#include "Analyzer/Scalar/VirtualExact/Native/IntegerLongElement.incc"
+#undef DefineTypeObject
+
+/***************************************************/
+/* Implementation of the class UnsignedLongElement */
+/***************************************************/
+
+#define DefineTypeObject TUnsignedLongElement
+#include "Analyzer/Scalar/VirtualExact/Native/IntegerLongElement.incc"
+#undef DefineTypeObject
+
+#undef DefineInitMethodTable
+#undef DefineInitConstMethodTable
+#undef DefineInitOMethodTable
+   
+#undef DefineImplementsPromotionAssignMethod
+#undef DefineImplementsPromotionMethod
+
+#undef DefineImplementsUnaryMethod
+#undef DefineImplementsBinaryMethod
+#undef DefineImplementsOBinaryMethod
+
+}}}} // end of namespace Analyzer::Scalar::Integer::VirtualExact
+

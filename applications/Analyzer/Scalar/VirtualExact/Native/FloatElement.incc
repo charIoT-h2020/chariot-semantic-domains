@@ -1,0 +1,171 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : FloatElement.incc
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of floating-point classes that are very helpful to define
+//     the compilation constants and the scalar elements used in
+//     simulation/symbolic execution.
+//   All this stuff is rather defined for source code analysis.
+//
+
+/* DefineTypeObject                  : Type of the element                                   */
+/* DefineTypeInheritedImplementation : Type of the inherited implementation                  */
+/* DefineIncludeFloatOperation       : Defined iff the operations of math.h are available    */
+
+#ifdef _MSC_VER
+#pragma warning(disable : 4244)
+#endif
+
+#ifdef DefineIncludeFloatOperation
+#define ThisClass DefineTypeObject<TypeBase>::MethodApplyTable
+#else
+#define ThisClass inherited
+#endif
+
+template <class TypeBase>
+DefineTypeObject<TypeBase>::MethodApplyTable::MethodApplyTable() {
+#include "StandardClasses/UndefineNew.h"
+   inherited::clear();
+   DefineInitMethodTable(CastChar)
+   DefineInitMethodTable(CastSignedChar)
+   DefineInitMethodTable(CastUnsignedChar)
+   DefineInitMethodTable(CastShort)
+   DefineInitMethodTable(CastUnsignedShort)
+   DefineInitMethodTable(CastInt)
+   DefineInitMethodTable(CastUnsignedInt)
+   DefineInitMethodTable(CastLong)
+   DefineInitMethodTable(CastUnsignedLong)
+   DefineInitMethodTable(CastFloat)
+   DefineInitMethodTable(CastDouble)
+   DefineInitMethodTable(CastLongDouble)
+
+   DefineInitOMethodTable(CompareLess, Compare)
+   DefineInitOMethodTable(CompareLessOrEqual, Compare)
+   DefineInitOMethodTable(CompareEqual, Compare)
+   DefineInitOMethodTable(CompareDifferent, Compare)
+   DefineInitOMethodTable(CompareGreaterOrEqual, Compare)
+   DefineInitOMethodTable(CompareGreater, Compare)
+
+   DefineInitMethodTable(PlusAssign)
+   DefineInitMethodTable(MinusAssign)
+   DefineInitMethodTable(TimesAssign)
+   DefineInitMethodTable(DivideAssign)
+   DefineInitMethodTable(OppositeAssign)
+   DefineInitMethodTable(AbsAssign)
+
+   DefineInitMethodTable(MinAssign)
+   DefineInitMethodTable(MaxAssign)
+
+#ifdef DefineIncludeFloatOperation
+   DefineInitMethodTable(Acos)
+   DefineInitMethodTable(Asin)
+   DefineInitMethodTable(Atan)
+   DefineInitMethodTable(Atan2)
+   DefineInitMethodTable(Ceil)
+   DefineInitMethodTable(Cos)
+   DefineInitMethodTable(Cosh)
+   DefineInitMethodTable(Exp)
+   DefineInitMethodTable(Fabs)
+   DefineInitMethodTable(Floor)
+   DefineInitMethodTable(Fmod)
+   DefineInitOMethodTable(Ldexp, LdexpInt)
+   DefineInitMethodTable(Log)
+   DefineInitMethodTable(Log10)
+   DefineInitMethodTable(Pow)
+   DefineInitMethodTable(Sin)
+   DefineInitMethodTable(Sinh)
+   DefineInitMethodTable(Sqrt)
+   DefineInitMethodTable(Tan)
+   DefineInitMethodTable(Tanh)
+#endif
+#include "StandardClasses/DefineNew.h"
+}
+
+#undef ThisClass
+
+template <class TypeBase>
+typename DefineTypeObject<TypeBase>::MethodApplyTable DefineTypeObject<TypeBase>::matMethodTable;
+
+#include "Analyzer/Scalar/VirtualExact/Native/CastInteger.incc"
+
+DefineImplementsBinaryMethod(PlusAssign)
+DefineImplementsBinaryMethod(MinusAssign)
+DefineImplementsBinaryMethod(TimesAssign)
+DefineImplementsBinaryMethod(DivideAssign)
+DefineImplementsUnaryMethod(OppositeAssign)
+DefineImplementsUnaryMethod(AbsAssign)
+
+#ifdef DefineIncludeFloatOperation
+
+#define DefineApplyUnaryOperator(TypeOperator)                                                   \
+template <class TypeBase>                                                                        \
+bool                                                                                             \
+DefineTypeObject<TypeBase>::apply##TypeOperator(const Operation& operation, EvaluationEnvironment& env) {\
+   TypeBase* result = nullptr;                                                                   \
+   env.storeResult(result = inherited::createDoubleElement(typename TypeBase::Init()));          \
+   ((TDoubleElement<TypeBase>&) *result).assign(TDoubleElement<TypeBase>(typename                \
+      TypeBase::Init().setInitialValue(inheritedImplementation(inheritedImplementation           \
+      ::apply((const TypeOperator##Operation&) operation, env)))), env);       \
+   return true;                                                                                  \
+}
+
+#define DefineApplyBinaryOperator(TypeOperator, TypeArg)                                         \
+template <class TypeBase>                                                                        \
+bool                                                                                             \
+DefineTypeObject<TypeBase>::apply##TypeOperator(const Operation& operation, EvaluationEnvironment& env) {\
+   TypeBase* result = nullptr;                                                                   \
+   env.storeResult(result = inherited::createDoubleElement(typename TypeBase::Init()));          \
+   ((TDoubleElement<TypeBase>&) *result).assign(TDoubleElement<TypeBase>(typename                \
+      TypeBase::Init().setInitialValue(inheritedImplementation(inheritedImplementation           \
+      ::apply((const TypeOperator##Operation&) operation,                      \
+         (const T##TypeArg##Element<TypeBase>&) env.getFirstArgument(), env)))), env);           \
+   return true;                                                                                  \
+}
+
+DefineApplyUnaryOperator(Acos)
+DefineApplyUnaryOperator(Asin)
+DefineApplyUnaryOperator(Atan)
+DefineApplyBinaryOperator(Atan2, Double)
+DefineApplyUnaryOperator(Ceil)
+DefineApplyUnaryOperator(Cos)
+DefineApplyUnaryOperator(Cosh)
+DefineApplyUnaryOperator(Exp)
+DefineApplyUnaryOperator(Fabs)
+DefineApplyUnaryOperator(Floor)
+DefineApplyBinaryOperator(Fmod, Double)
+
+template <class TypeBase>
+bool
+DefineTypeObject<TypeBase>::applyLdexpInt(const Operation& operation, EvaluationEnvironment& env) {
+   TypeBase* result = nullptr;
+   env.storeResult(result = inherited::createDoubleElement(typename TypeBase::Init()));
+   ((TDoubleElement<TypeBase>&) *result).assign(TDoubleElement<TypeBase>(typename
+      TypeBase::Init().setInitialValue(inheritedImplementation(inheritedImplementation
+      ::apply((const LdexpOperation&) operation,
+         ((const Integer::VirtualExact::TIntElement<TypeBase>&) env.getFirstArgument()).getInt(), env)))), env);
+   return true;
+}
+
+DefineApplyUnaryOperator(Log)
+DefineApplyUnaryOperator(Log10)
+DefineApplyBinaryOperator(Pow, Double)
+DefineApplyUnaryOperator(Sin)
+DefineApplyUnaryOperator(Sinh)
+DefineApplyUnaryOperator(Sqrt)
+DefineApplyUnaryOperator(Tan)
+DefineApplyUnaryOperator(Tanh)
+
+#undef DefineApplyUnaryOperator
+#undef DefineApplyBinaryOperator
+
+#endif
+
+#ifdef _MSC_VER
+#pragma warning(default : 4244)
+#endif
+

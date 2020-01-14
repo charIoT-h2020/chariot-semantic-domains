@@ -1,0 +1,74 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : IntMethodTable.inch
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Definition of the virtual method table for the class IntElement
+//     representing the compilation constants of type int and the
+//     scalar int elements used in simulation/symbolic execution.
+//   All this stuff is rather defined for source code analysis.
+//
+
+typedef bool (thisType::*PointerApplyMethod)(const Operation&, EvaluationEnvironment&);
+typedef inherited VirtualInheritance;
+
+class IntAndPointerMethod : public EnhancedObject {
+  private:
+   typedef EnhancedObject inherited;
+   PointerApplyMethod piaIntMethod;
+   PointerApplyMethod piaPointerMethod;
+
+  public:
+   IntAndPointerMethod(PointerApplyMethod intMethod, PointerApplyMethod pointerMethod)
+      :  piaIntMethod(intMethod), piaPointerMethod(pointerMethod) {}
+   IntAndPointerMethod(const IntAndPointerMethod& source) = default;
+   IntAndPointerMethod& operator=(const IntAndPointerMethod& source) = default;
+   DefineCopy(IntAndPointerMethod)
+   DDefineAssign(IntAndPointerMethod)
+
+   const PointerApplyMethod& intMethod() const { return piaIntMethod; }
+   const PointerApplyMethod& pointerMethod() const { return piaPointerMethod; }
+};
+
+class DecisionNode : public PNT::DecisionNode<PointerApplyMethod> {
+  private:
+   typedef PNT::DecisionNode<PointerApplyMethod> inherited;
+
+  protected:
+   friend class MethodApplyTable;
+
+   const PointerApplyMethod& intMethod() const
+      {  return ((const IntAndPointerMethod&) inherited::getArray()).intMethod(); }
+   const PointerApplyMethod& pointerMethod() const
+      {  return ((const IntAndPointerMethod&) inherited::getArray()).pointerMethod(); }
+
+  public:
+   DecisionNode() {}
+   DecisionNode(PointerApplyMethod& method) : inherited(method) {}
+   DecisionNode(PointerApplyMethod& intMethod, PointerApplyMethod& pointerMethod)
+      {  setBiMethod(intMethod, pointerMethod); }
+
+   void setBiMethod(PointerApplyMethod intMethod, PointerApplyMethod pointerMethod)
+      {  inherited::setArray(new IntAndPointerMethod(intMethod, pointerMethod)); }
+
+   bool execute(thisType& object, const Operation& operation, EvaluationEnvironment& env) const
+      {  return inherited::hasMethod() ? (object.*inherited::getMethod())(operation, env)
+            : (inherited::hasArray() ? (((const VirtualInheritance&) env.getFirstArgument()).isScalar()
+               ? (object.*intMethod())(operation, env) : (object.*pointerMethod())(operation, env)) : false);
+      }
+};
+
+class MethodApplyTable : public PNT::ConstMethodTable<DecisionNode, Operation::EndOfType> {
+  private:
+   typedef PNT::ConstMethodTable<DecisionNode, Operation::EndOfType> inherited;
+
+  public:
+   MethodApplyTable();
+   MethodApplyTable(const MethodApplyTable& source) = default;
+   DefineCopy(MethodApplyTable)
+};
+

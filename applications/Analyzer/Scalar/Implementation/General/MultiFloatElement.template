@@ -1,0 +1,137 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : implementation of general scalar elements
+// File      : MultiFloatElement.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of a multifloat template class providing all the operations on multifloats.
+//
+
+#ifndef Analyzer_Scalar_Implementation_MultiFloatElementTemplate
+#define Analyzer_Scalar_Implementation_MultiFloatElementTemplate
+
+#include "Analyzer/Scalar/Implementation/General/MultiFloatElement.h"
+// #include "Analyzer/Scalar/Scalar.hpp"
+
+namespace Analyzer {}
+
+#include "Analyzer/Scalar/Implementation/Native/FloatElement.h"
+#include "Numerics/HostFloating.h"
+#include "Numerics/Floating.template"
+
+namespace Analyzer { namespace Scalar {
+namespace Floating { namespace Implementation { namespace Details {
+
+template <class TypeMultiTraits>
+TMultiFloatElement<TypeMultiTraits>::TMultiFloatElement(int sizeMantissa, int sizeExponent,
+      IntNature nature, const Scalar::MultiBit::Implementation::Details::TMultiBitElement<TypeMultiTraits>& intValue,
+      ReadParameters& params)
+   :  inherited(sizeMantissa, sizeExponent) {
+   if (nature == INPointer) {
+      typedef MultiBit::Implementation::Details::TMultiBitElement<TypeMultiTraits> BigInt;
+      AssumeCondition(sizeMantissa + sizeExponent + 1 == intValue.getSize())
+      if (intValue.cbitArray(intValue.getSize()-1))
+         inherited::setNegative();
+      BigInt mantissaContent = intValue, exponentContent = intValue;
+      mantissaContent.setSize(sizeMantissa);
+      mantissaContent.normalizeLastCell();
+      exponentContent >>= sizeMantissa;
+      exponentContent.setSize(sizeExponent);
+      exponentContent.normalizeLastCell();
+      int nbCell = (sizeMantissa+sizeof(unsigned int)*8-1)/(8*sizeof(unsigned int));
+      while (--nbCell >= 0)
+         inherited::mantissa()[nbCell] = mantissaContent[nbCell];
+      nbCell = (sizeExponent+sizeof(unsigned int)*8-1)/(8*sizeof(unsigned int));
+      while (--nbCell >= 0)
+         inherited::exponent()[nbCell] = exponentContent[nbCell];
+   }
+   else {
+      typename inherited::IntConversion intConversion;
+      if (nature == INSigned) {
+         intConversion.setSigned();
+         intConversion.assignSigned(intValue);
+      }
+      else {
+         intConversion.setUnsigned();
+         intConversion.assignUnsigned(intValue);
+      };
+      inherited::setInteger(intConversion, params);
+   }
+}
+
+template <class TypeMultiTraits>
+TMultiFloatElement<TypeMultiTraits>::TMultiFloatElement(const MultiFloatElement& source)
+   :  inherited(source.mantissa().getSize(), source.exponent().getSize()) {
+   int nbCell = (source.mantissa().getSize()+sizeof(unsigned int)*8-1)/(8*sizeof(unsigned int));
+   while (--nbCell >= 0)
+      inherited::mantissa()[nbCell] = source.mantissa()[nbCell];
+   inherited::mantissa().normalizeLastCell();
+   nbCell = (source.exponent().getSize()+sizeof(unsigned int)*8-1)/(8*sizeof(unsigned int));
+   while (--nbCell >= 0)
+      inherited::exponent()[nbCell] = source.exponent()[nbCell];
+   inherited::exponent().normalizeLastCell();
+   if (source.isNegative())
+      inherited::setNegative();
+}
+
+template <class TypeMultiTraits>
+MultiFloatElement::MultiFloatElement(const TMultiFloatElement<TypeMultiTraits>& source)
+   :  inherited(source.mantissa().getSize(), source.exponent().getSize()) {
+   int nbCell = (source.mantissa().getSize()+sizeof(unsigned int)*8-1)/(8*sizeof(unsigned int));
+   while (--nbCell >= 0)
+      mantissa()[nbCell] = source.mantissa()[nbCell];
+   mantissa().normalizeLastCell();
+   nbCell = (source.exponent().getSize()+sizeof(unsigned int)*8-1)/(8*sizeof(unsigned int));
+   while (--nbCell >= 0)
+      exponent()[nbCell] = source.exponent()[nbCell];
+   exponent().normalizeLastCell();
+   if (source.isNegative())
+      setNegative();
+}
+
+template <class TypeMultiTraits>
+void
+TMultiFloatElement<TypeMultiTraits>::assign(const Scalar::Implementation::VirtualElement& asource) {
+   AssumeCondition(dynamic_cast<const Scalar::Implementation::ImplementationElement*>(&asource))
+   const Scalar::Implementation::ImplementationElement& isource = (const Scalar::Implementation::ImplementationElement&) asource;
+   if (isource.isConstantDouble()) {
+      typedef Numerics::TDoubleElement<Numerics::TFloatingBase<Numerics::LongDoubleTraits> > Double;
+      AssumeCondition(dynamic_cast<const Floating::Implementation::DoubleElement*>(&asource))
+      const Floating::Implementation::DoubleElement& source = (const Floating::Implementation::DoubleElement&) asource;
+      Double::BuiltDouble softDouble(Double(source.getElement()));
+      inherited::mantissa().setSize(softDouble.getMantissa().getSize());
+      inherited::exponent().setSize(softDouble.getBasicExponent().getSize());
+      int nbCell = (softDouble.getMantissa().getSize()+sizeof(unsigned int)*8-1)/(8*sizeof(unsigned int));
+      while (--nbCell >= 0)
+         inherited::mantissa()[nbCell] = softDouble.getMantissa()[nbCell];
+      nbCell = (softDouble.getBasicExponent().getSize()+sizeof(unsigned int)*8-1)/(8*sizeof(unsigned int));
+      while (--nbCell >= 0)
+         inherited::exponent()[nbCell] = softDouble.getBasicExponent()[nbCell];
+      if (softDouble.isNegative())
+         inherited::setNegative();
+   }
+   else if (isource.isMultiFloat()) {
+      // AssumeCondition(dynamic_cast<const Implementation::TMultiFloatElement<TypeMultiTraits>*>(&asource))
+      // inherited::operator=((const Implementation::TMultiFloatElement<TypeMultiTraits>&) asource);
+      AssumeCondition(dynamic_cast<const Implementation::MultiFloatElement*>(&asource))
+      const Implementation::MultiFloatElement& source = (const Implementation::MultiFloatElement&) asource;
+      int exponentSize = (inherited::getSizeExponent() + 8*sizeof(unsigned int) - 1)/(8*sizeof(unsigned int));
+      for (int index = 0; index < exponentSize; ++index)
+         inherited::getSBasicExponent()[index] = source.getBasicExponent()[index];
+      int mantissaSize = (inherited::getSizeMantissa() + 8*sizeof(unsigned int) - 1)/(8*sizeof(unsigned int));
+      for (int index = 0; index < mantissaSize; ++index)
+         inherited::getSMantissa()[index] = source.getMantissa()[index];
+      inherited::setNegative(source.isNegative());
+   }
+   else
+      { AssumeCondition(false) }
+}
+
+} // end of namespace Details
+
+}}}} // end of namespaces Analyzer::Scalar::Floating::Implementation
+
+#endif // Analyzer_Scalar_Implementation_MultiFloatElementTemplate

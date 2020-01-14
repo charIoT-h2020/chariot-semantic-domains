@@ -1,0 +1,65 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : IntMethodTable.inch
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Definition of the virtual method table for the floating point classe
+//     representing the compilation constants of type float and the
+//     scalar float elements used in simulation/symbolic execution.
+//   All this stuff is rather defined for source code analysis.
+//
+
+/* DefineIncludeFloatOperation       : Defined iff the operations of math.h are available    */
+
+typedef bool (thisType::*PointerApplyMethod)(const Operation&, EvaluationEnvironment&);
+
+class MethodDecisionNode : public PNT::DecisionNode<PointerApplyMethod> {
+  private:
+   typedef PNT::DecisionNode<PointerApplyMethod> inherited;
+
+  protected:
+   friend class MethodApplyTable;
+
+  public:
+   MethodDecisionNode() {}
+   MethodDecisionNode(PointerApplyMethod method) : inherited(method) {}
+
+   bool execute(thisType& object, const Operation& operation, EvaluationEnvironment& env) const
+      {  return (inherited::hasMethod()) ? (object.*inherited::getMethod())(operation, env) : false; }
+};
+
+#ifdef DefineIncludeFloatOperation
+class MethodApplyTable : public PNT::ConstMethodTable<MethodDecisionNode, Operation::EndOfType-Operation::EndOfNumeric+Operation::EndOfSimple> {
+  private:
+   typedef PNT::ConstMethodTable<MethodDecisionNode, Operation::EndOfType-Operation::EndOfNumeric+Operation::EndOfSimple> inherited;
+
+  protected:
+   MethodDecisionNode& elementAt(int index)
+      {  AssumeCondition((index < Operation::EndOfSimple) || (index >= Operation::EndOfNumeric))
+         return (index < Operation::EndOfSimple) ? inherited::elementAt(index)
+            : inherited::elementAt(index-Operation::EndOfNumeric+Operation::EndOfSimple);
+      }
+
+  public:
+   const MethodDecisionNode& operator[](int index) const
+      {  AssumeCondition((index < Operation::EndOfSimple) || (index >= Operation::EndOfNumeric))
+         return (index < Operation::EndOfSimple) ? inherited::operator[](index)
+            : inherited::operator[](index-Operation::EndOfNumeric+Operation::EndOfSimple);
+      }
+
+#else
+class MethodApplyTable : public PNT::ConstMethodTable<MethodDecisionNode, Operation::EndOfSimple> {
+  private:
+   typedef PNT::ConstMethodTable<MethodDecisionNode, Operation::EndOfSimple> inherited;
+
+#endif
+
+  public:
+   MethodApplyTable();
+   MethodApplyTable(const MethodApplyTable& source) = default;
+};
+

@@ -1,0 +1,1115 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : approximate native scalar elements
+// File      : ConstantMultiFloat.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of a floating point class of multibit elements
+//     for the mantissa and the exponent.
+//   This definition relies on independent host analyses.
+//
+
+#ifndef Analyzer_Scalar_Approximate_ConstantMultiFloatTemplate
+#define Analyzer_Scalar_Approximate_ConstantMultiFloatTemplate
+
+#include "Analyzer/Scalar/Approximate/Native/ConstantFloatElement.h"
+#include "Analyzer/Scalar/Approximate/Native/ConstantNativeElement.h"
+// #include "Analyzer/Scalar/Scalar.hpp"
+#include "Analyzer/Scalar/Approximate/General/ConstantMultiFloat.h"
+
+namespace Analyzer {}
+
+#include "Analyzer/Scalar/Implementation/General/MultiFloatElement.template"
+#include "Analyzer/Scalar/Approximate/VirtualElement.template"
+#include "Analyzer/Scalar/Approximate/Native/ConstantNativeElement.template"
+
+namespace Analyzer { namespace Scalar {
+
+namespace Floating { namespace Approximate {
+
+namespace DMultiConstantElement {
+
+template <class TypeConcrete, class TypeDomainTraits>
+Base::MethodApplyTable<TypeConcrete, TypeDomainTraits>::MethodApplyTable() {
+#include "StandardClasses/UndefineNew.h"
+   typedef Scalar::Approximate::Details::MethodApplyTable<TypeDomainTraits> inherited;
+   inherited::clear();
+
+#define DefineInitApplyMethodTable(TypeOperation)                                                \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&TypeConcrete::apply##TypeOperation);
+
+#define DefineInitApplyOMethodTable(TypeOperation, TypeMethod)                                   \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&TypeConcrete::apply##TypeMethod);
+
+   DefineInitApplyMethodTable(CastMultiFloat)
+   DefineInitApplyMethodTable(CastMultiBit)
+   DefineInitApplyOMethodTable(CastMultiBitPointer, CastMultiBit)
+
+   DefineInitApplyMethodTable(PlusAssign)
+   DefineInitApplyMethodTable(MinusAssign)
+   DefineInitApplyMethodTable(TimesAssign)
+   DefineInitApplyMethodTable(DivideAssign)
+   DefineInitApplyMethodTable(OppositeAssign)
+   DefineInitApplyMethodTable(AbsAssign)
+
+   DefineInitApplyOMethodTable(CompareLess, Compare)
+   DefineInitApplyOMethodTable(CompareLessOrEqual, Compare)
+   DefineInitApplyOMethodTable(CompareEqual, Compare)
+   DefineInitApplyOMethodTable(CompareDifferent, Compare)
+   DefineInitApplyOMethodTable(CompareGreaterOrEqual, Compare)
+   DefineInitApplyOMethodTable(CompareGreater, Compare)
+
+   DefineInitApplyMethodTable(IsInftyExponent)
+   DefineInitApplyMethodTable(IsNaN)
+   DefineInitApplyMethodTable(IsQNaN)
+   DefineInitApplyMethodTable(IsSNaN)
+   DefineInitApplyMethodTable(IsPositive)
+   DefineInitApplyMethodTable(IsZeroExponent)
+   DefineInitApplyMethodTable(IsNegative)
+   DefineInitApplyMethodTable(CastMantissa)
+
+   DefineInitApplyMethodTable(MinAssign)
+   DefineInitApplyMethodTable(MaxAssign)
+
+   // DefineInitApplyMethodTable(Acos)
+   // DefineInitApplyMethodTable(Asin)
+   // DefineInitApplyMethodTable(Atan)
+   // // DefineInitApplyMethodTable(Atan2)
+   // DefineInitApplyMethodTable(Ceil)
+   // DefineInitApplyMethodTable(Cos)
+   // DefineInitApplyMethodTable(Cosh)
+   // DefineInitApplyMethodTable(Exp)
+   // DefineInitApplyMethodTable(Fabs)
+   // DefineInitApplyMethodTable(Floor)
+   // // DefineInitApplyMethodTable(Fmod)
+   // // DefineInitApplyMethodTable(Frexp)
+   // // DefineInitApplyMethodTable(Ldexp)
+   // DefineInitApplyMethodTable(Log)
+   // DefineInitApplyMethodTable(Log10)
+   // // DefineInitApplyMethodTable(Modf)
+   // // DefineInitApplyMethodTable(Pow)
+   // DefineInitApplyMethodTable(Sin)
+   // DefineInitApplyMethodTable(Sinh)
+   // DefineInitApplyMethodTable(Sqrt)
+   // DefineInitApplyMethodTable(Tan)
+   // DefineInitApplyMethodTable(Tanh)
+
+#undef DefineInitApplyMethodTable
+#undef DefineInitApplyOMethodTable
+#include "StandardClasses/DefineNew.h"
+}
+
+#define DefineInitOConstraintCompareMethodTable(TypeOperation, TypeMethod)                       \
+   inherited::mcctCompareTable.elementAt(Operation::T##TypeOperation)                            \
+      .setMethod(&TypeConcrete::constraint##TypeMethod);
+
+#define DefineInitConstraintBinaryOMethodTable(TypeOperation, TypeMethod)                        \
+   inherited::mcbtBinaryTable[Operation::T##TypeOperation].setMethod(&TypeConcrete::constraint##TypeMethod);
+
+#define DefineInitConstraintBinaryOMethodTableDouble(TypeOperation, TypeMethod)                  \
+   inherited::mcbtBinaryTable.elementAt(Operation::T##TypeOperation).setArray(                   \
+      new Scalar::Approximate::Details::GenericAndConstantResultBinaryConstraintMethod<TypeDomainTraits>( \
+         &TypeConcrete::constraint##TypeOperation,                                               \
+         &TypeConcrete::constraint##TypeMethod##WithConstantResult));
+
+#define DefineInitConstraintBinaryOReMethodTableDouble(TypeOperation, TypeMethod)                \
+   inherited::mcbtBinaryTable.elementAt(Operation::T##TypeOperation).resetArray(                 \
+      new Approximate::Details::GenericAndConstantResultBinaryConstraintMethod<TypeDomainTraits>(\
+         &TypeConcrete::constraint##TypeOperation,                                               \
+         &TypeConcrete::constraint##TypeMethod##WithConstantResult));
+
+template <class TypeConcrete, class TypeDomainTraits>
+Base::MethodConstraintTable<TypeConcrete, TypeDomainTraits>::MethodConstraintTable() {
+#include "StandardClasses/UndefineNew.h"
+   typedef Scalar::Approximate::Details::MethodConstraintForConstantsTable<TypeDomainTraits> inherited;
+   DefineInitOConstraintCompareMethodTable(CompareLess, CompareLessOrGreater)
+   DefineInitOConstraintCompareMethodTable(CompareLessOrEqual, CompareLessOrGreaterOrEqual)
+   DefineInitOConstraintCompareMethodTable(CompareEqual, CompareEqual)
+   DefineInitOConstraintCompareMethodTable(CompareDifferent, CompareDifferent)
+   DefineInitOConstraintCompareMethodTable(CompareGreater, CompareLessOrGreater)
+   DefineInitOConstraintCompareMethodTable(CompareGreaterOrEqual, CompareLessOrGreaterOrEqual)
+
+   DefineInitConstraintBinaryOMethodTableDouble(MinAssign, MinAssign)
+   DefineInitConstraintBinaryOMethodTableDouble(MaxAssign, MaxAssign)
+
+   DefineInitConstraintBinaryOReMethodTableDouble(PlusAssign, ArithmeticAssign)
+   DefineInitConstraintBinaryOReMethodTableDouble(MinusAssign, ArithmeticAssign)
+   DefineInitConstraintBinaryOReMethodTableDouble(TimesAssign, ArithmeticAssign)
+   DefineInitConstraintBinaryOReMethodTableDouble(DivideAssign, ArithmeticAssign)
+
+   // DefineInitConstraintBinaryMethodTable(Atan2)
+   // DefineInitConstraintBinaryMethodTable(Fmod)
+   // DefineInitConstraintBinaryMethodTable(Frexp)
+   // DefineInitConstraintBinaryMethodTable(Ldexp)
+   // DefineInitConstraintBinaryMethodTable(Pow)
+#include "StandardClasses/DefineNew.h"
+}
+
+#undef DefineInitConstraintBinaryOMethodTable
+#undef DefineInitConstraintBinaryOMethodTableDouble
+#undef DefineInitConstraintBinaryOReMethodTableDouble
+#undef DefineInitOConstraintCompareMethodTable
+
+template <class TypeConcrete, class TypeDomainTraits>
+Base::MethodQueryTable<TypeConcrete, TypeDomainTraits>::MethodQueryTable() {
+#include "StandardClasses/UndefineNew.h"
+   VirtualElement::FunctionQueryTable* functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TExtern).absorbFunctionTable(functionTable);
+   functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TOperation).absorbFunctionTable(functionTable);
+   TypeConcrete::fillTable(*this, (TypeConcrete*) NULL);
+   (*functionTable)[QueryOperation::TOInverseCast].resetMethod(&TypeConcrete::queryInverseCastOperation);
+   functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TDuplication).absorbFunctionTable(functionTable);
+   functionTable->setSize(3);
+   (*functionTable)[QueryOperation::TCDClone].setMethod(&VirtualElement::queryCopy);
+   (*functionTable)[QueryOperation::TCDSpecialize].setMethod(&VirtualElement::querySpecialize);
+
+   functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TDomain).absorbFunctionTable(functionTable);
+   // functionTable = &inherited::elementAt(VirtualQueryOperation::TDomain).queryFunctionTable();
+   functionTable->setSize(QueryOperation::EndOfTypeDomain);
+
+#define DefineInitQueryMethodTable(TypeOperation)                              \
+   (*functionTable)[QueryOperation::TD##TypeOperation].setMethod(&TypeConcrete::queryNew##TypeOperation);
+   
+   DefineInitQueryMethodTable(Disjunction)
+   DefineInitQueryMethodTable(Interval)
+
+#undef DefineInitQueryMethodTable
+
+   Approximate::Details::MethodQuerySecondDecisionNode<TypeDomainTraits>* methodTable = new Approximate::Details::MethodQuerySecondDecisionNode<TypeDomainTraits>();
+   inherited::elementAt(VirtualQueryOperation::TExternMethod).absorbMethodTable(methodTable);
+   methodTable->setSize(QueryOperation::EndOfTypeExternMethods);
+   (*methodTable)[QueryOperation::TEMSizes].setMethod(&TypeConcrete::querySizes);
+
+   inherited::elementAt(VirtualQueryOperation::TSimplification).setMethod(&TypeConcrete::querySimplification);
+   methodTable = new Approximate::Details::MethodQuerySecondDecisionNode<TypeDomainTraits>();
+   methodTable->setSize(2);
+   inherited::elementAt(VirtualQueryOperation::TCompareSpecial).absorbMethodTable(methodTable);
+   (*methodTable)[VirtualQueryOperation::TCSUndefined].setMethod(&TypeConcrete::queryCompareSpecial);                            
+   (*methodTable)[VirtualQueryOperation::TCSGuard].setMethod(&TypeConcrete::queryGuardAll);                            
+#include "StandardClasses/DefineNew.h"
+}
+
+//    VirtualElement::FunctionQueryTable* functionTable                                                  
+//       = &inherited::elementAt(VirtualQueryOperation::TOperation).getFunctionTable();           
+//   (*functionTable)[QueryOperation::TOInverseCast].setMethod(&TypeCast##Element::getInverseCastOperation);
+//    Approximate::Details::MethodQuerySecondDecisionNode<TypeDomainTraits>* methodTable               
+//       = &inherited::elementAt(VirtualQueryOperation::TSimplification).getMethodTable();        
+//    (*methodTable)[0].setMethod(&TypeCast##Element::querySimplification);                            
+//    methodTable = &inherited::elementAt(VirtualQueryOperation::TCompareSpecial).getMethodTable();  
+//    (*methodTable)[0].setMethod(&TypeCast##Element::queryCompareSpecial);                            
+//    inherited::elementAt(VirtualQueryOperation::TCompareSpecial).setMethod(&TypeConcrete::queryCompareSpecial);
+
+} // end of namespace DMultiConstantElement
+
+namespace DMultiConstantElement {
+
+#define DefineImplementsUnaryMethod(TypeOperation)                                               \
+template <class TypeImplementation>                                                              \
+bool                                                                                             \
+TMultiConstantElement<TypeImplementation>::apply##TypeOperation(const VirtualOperation& operation, EvaluationEnvironment& env) \
+   {  inheritedImplementation::apply((const TypeOperation##Operation&) operation, env); return true; }
+
+#define DefineImplementsUnaryMethodCopy(TypeOperation)                                           \
+template <class TypeImplementation>                                                              \
+bool                                                                                             \
+TMultiConstantElement<TypeImplementation>::apply##TypeOperation(const VirtualOperation& operation, EvaluationEnvironment& env) \
+   {  PNT::TPassPointer<TMultiConstantElement<TypeImplementation>, PPAbstractElement> result(*this); \
+      result->inheritedImplementation::apply((const TypeOperation##Operation&) operation, env);  \
+      env.presult() = result;                                                                    \
+      return true;                                                                               \
+   }
+
+#define DefineImplementsBinaryMethod(TypeOperation)                                              \
+template <class TypeImplementation>                                                              \
+bool                                                                                             \
+TMultiConstantElement<TypeImplementation>::apply##TypeOperation(const VirtualOperation& operation, EvaluationEnvironment& env) \
+   {  AssumeCondition(dynamic_cast<const thisType*>(&env.getFirstArgument()))                    \
+      inheritedImplementation::apply((const TypeOperation##Operation&)                           \
+             operation, (const inheritedImplementation&) (const thisType&) env.getFirstArgument(), env); \
+      return true;                                                                               \
+   }
+
+#define DefineImplementsTernaryMethod(TypeOperation)                                             \
+template <class TypeImplementation>                                                              \
+bool                                                                                             \
+TMultiConstantElement<TypeImplementation>::apply##TypeOperation(const VirtualOperation& operation, EvaluationEnvironment& env) \
+   {  AssumeCondition(dynamic_cast<const thisType*>(&env.getFirstArgument()) && dynamic_cast<const thisType*>(&env.getSecondArgument()))\
+      inheritedImplementation::apply((const TypeOperation##Operation&)                           \
+             operation, (const inheritedImplementation&) (const thisType&) env.getFirstArgument(), \
+             (const inheritedImplementation&) (const thisType&) env.getSecondArgument(), env);   \
+      return true;                                                                               \
+   }
+
+DefineImplementsUnaryMethodCopy(CastMultiFloat)
+DefineImplementsBinaryMethod(PlusAssign)
+DefineImplementsBinaryMethod(MinusAssign)
+DefineImplementsBinaryMethod(TimesAssign)
+DefineImplementsBinaryMethod(DivideAssign)
+DefineImplementsUnaryMethod(OppositeAssign)
+DefineImplementsUnaryMethod(AbsAssign)
+DefineImplementsTernaryMethod(MultAddAssign)
+DefineImplementsTernaryMethod(MultSubAssign)
+DefineImplementsTernaryMethod(NegMultAddAssign)
+DefineImplementsTernaryMethod(NegMultSubAssign)
+
+// DefineImplementsUnaryMethod(Acos)
+// DefineImplementsUnaryMethod(Asin)
+// DefineImplementsUnaryMethod(Atan)
+// DefineImplementsBinaryMethod(Atan2)
+// DefineImplementsUnaryMethod(Ceil)
+// DefineImplementsUnaryMethod(Cos)
+// DefineImplementsUnaryMethod(Cosh)
+// DefineImplementsUnaryMethod(Exp)
+// DefineImplementsUnaryMethod(Fabs)
+// DefineImplementsUnaryMethod(Floor)
+// DefineImplementsBinaryMethod(Fmod)
+// // DefineImplementsUnaryMethod(Frexp)
+// // DefineImplementsOBinaryMethod(Ldexp)
+// DefineImplementsUnaryMethod(Log)
+// DefineImplementsUnaryMethod(Log10)
+// // DefineImplementsUnaryMethod(Modf)
+// DefineImplementsBinaryMethod(Pow)
+// DefineImplementsUnaryMethod(Sin)
+// DefineImplementsUnaryMethod(Sinh)
+// DefineImplementsUnaryMethod(Sqrt)
+// DefineImplementsUnaryMethod(Tan)
+// DefineImplementsUnaryMethod(Tanh)
+
+#undef DefineImplementsUnaryMethod
+#undef DefineImplementsBinaryMethod
+#undef DefineImplementsTernaryMethod
+
+template <class TypeImplementation>
+typename TMultiConstantElement<TypeImplementation>::LocalMethodConstraintTable
+TMultiConstantElement<TypeImplementation>::mctMethodConstraintTable;
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::intersectWithTo(Approximate::VirtualElement& source, EvaluationEnvironment& env) const {
+   return Scalar::Approximate::Details::MethodAccess<DomainTraits>::intersectWithTo(*this, source, env);
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::constraintTo(const VirtualOperation& operation,
+   Scalar::Approximate::VirtualElement& source, const Approximate::VirtualElement& result, ConstraintEnvironment& env) {
+   return Scalar::Approximate::Details::MethodAccess<DomainTraits>::constraintTo(*this,
+      (const typename inherited::Operation&) operation, source, result, env);
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::contain(const Scalar::VirtualElement& source, Scalar::EvaluationEnvironment& env) const {
+   return inherited::contain(source, env) ? true
+      :  Scalar::Approximate::Details::MethodAccess<DomainTraits>::containConstant(*this, (const VirtualElement&) source, (EvaluationEnvironment&) env);
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::intersectWith(const Scalar::Approximate::VirtualElement& source, EvaluationEnvironment& env) {
+   if (source.getType().isConstant())
+      return Scalar::Approximate::Details::MethodAccess<DomainTraits>::intersectWithConstant(*this, source, env);
+   else {
+      assume(source.contain(*this, env));
+      if (env.isNoneApplied())
+         env.setEmpty();
+      else if (env.isPartialApplied())
+         return source.intersectWithTo(*this, env);
+   };
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::constraint(const VirtualOperation& operation,
+      const Scalar::Approximate::VirtualElement& result, ConstraintEnvironment& env) {
+   return inherited::constraint(operation, result, env) ? true
+      :  Scalar::Approximate::Details::MethodAccess<DomainTraits>::constraintConstant(*this,
+            (const typename inherited::Operation&) operation, result, env);
+}
+
+template <class TypeImplementation>
+void
+TMultiConstantElement<TypeImplementation>::retrieveApplyCastFloatInInit(VirtualElement::InitFloat& result, PPVirtualElement floatElement, EvaluationEnvironment& env) {
+   Scalar::Floating::CastMultiFloatOperation castOperation;
+   QueryOperation::SizesEnvironment sizesEnv;
+   floatElement->query(QueryOperation().setSizes(), sizesEnv);
+   castOperation.setSizeMantissa(sizesEnv.sizeMantissa()).setSizeExponent(sizesEnv.sizeExponent()).setSigned();
+   inheritedImplementation thisImplementation(*this);
+   thisImplementation.apply(castOperation, env);
+   AssumeCondition(!env.hasResult())
+
+   Implementation::MultiFloatElement resultElement(sizesEnv.sizeMantissa(), sizesEnv.sizeExponent());
+   for (int index = (sizesEnv.sizeMantissa() + 8*(sizeof(unsigned int))-1)/(8*(sizeof(unsigned int)));
+         --index >= 0; )
+      resultElement.mantissa()[index] = thisImplementation.mantissa()[index];
+   for (int index = (sizesEnv.sizeExponent() + 8*(sizeof(unsigned int))-1)/(8*(sizeof(unsigned int)));
+         --index >= 0; )
+      resultElement.exponent()[index] = thisImplementation.exponent()[index];
+   resultElement.setSign(inheritedImplementation::isPositive());
+
+   result.setSizeMantissa(sizesEnv.sizeMantissa()).setSizeExponent(sizesEnv.sizeExponent())
+      .setBitSize(sizesEnv.size()).setInitialValue(resultElement);
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::applyCastMultiBit(const VirtualOperation& aoperation, EvaluationEnvironment& env) {
+   typedef Scalar::DInt::TCastMultiBitOperation<Operation> CastToMultiBitOperation;
+   AssumeCondition(dynamic_cast<const CastToMultiBitOperation*>(&aoperation))
+   const CastToMultiBitOperation& operation = (const CastToMultiBitOperation&) aoperation;
+   int sizeMantissa = mantissa().getSize();
+   int sizeExponent = exponent().getSize();
+
+   typedef Implementation::MultiFloatElement MultiFloatElement;
+   typedef Scalar::MultiBit::Implementation::MultiBitElement MultiBitElement;
+   typename inheritedImplementation::ReadParameters params;
+   MultiFloatElement multiFloat(sizeMantissa, sizeExponent);
+   for (int index = (sizeMantissa + 8*(sizeof(unsigned int))-1)/(8*(sizeof(unsigned int)));
+         --index >= 0; )
+      multiFloat.mantissa()[index] = inheritedImplementation::mantissa()[index];
+   for (int index = (sizeExponent + 8*(sizeof(unsigned int))-1)/(8*(sizeof(unsigned int)));
+         --index >= 0; )
+      multiFloat.exponent()[index] = inheritedImplementation::exponent()[index];
+   multiFloat.setSign(inheritedImplementation::isPositive());
+
+   MultiBitElement castElement(operation.getResultSize(),
+      (operation.getType() == Operation::TCastMultiBitPointer)
+         ? MultiBitElement::INPointer : MultiBitElement::INSigned, *this, params);
+   inheritedImplementation::assignParamsToEnv(params, env);
+   env.presult().absorbElement(inherited::createMultiBitElement(typename inherited::Init()
+      .setBitSize(operation.getResultSize()).setInitialValue(castElement)));
+   return true;
+}
+
+#define DefineImplementsQueryMethod(TypeMethod)                                                  \
+template <class TypeImplementation>                                                              \
+bool                                                                                             \
+TMultiConstantElement<TypeImplementation>::apply##TypeMethod(const VirtualOperation&, EvaluationEnvironment& env) \
+   {  bool value = false;                                                                        \
+      bool result = inheritedImplementation::apply(TypeMethod##Operation(), value, env);         \
+      if (result)                                                                                \
+         env.presult().absorbElement(createCompareResultElement(value));                         \
+      return result;                                                                             \
+   }
+
+DefineImplementsQueryMethod(IsInftyExponent)
+DefineImplementsQueryMethod(IsNaN)
+DefineImplementsQueryMethod(IsQNaN)
+DefineImplementsQueryMethod(IsSNaN)
+DefineImplementsQueryMethod(IsPositive)
+DefineImplementsQueryMethod(IsZeroExponent)
+DefineImplementsQueryMethod(IsNegative)
+
+#undef DefineImplementsQueryMethod
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::applyCastMantissa(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   const typename inheritedImplementation::Mantissa& mantissa = inheritedImplementation::getMantissa();
+   typedef Scalar::MultiBit::Implementation::MultiBitElement ImplementationElement;
+   ImplementationElement castElement(mantissa.getSize());
+   for (int index = 0; index < (int) (mantissa.getSize() + 8*sizeof(unsigned int) - 1) / (int) (8*sizeof(unsigned int)); ++index)
+      castElement[index] = mantissa[index];
+   env.presult().absorbElement(inherited::createMultiBitElement(typename inherited::Init()
+      .setBitSize(mantissa.getSize()).setInitialValue(castElement)));
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::applyMinAssign(const VirtualOperation&, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const thisType*>(&env.getFirstArgument()))
+   const thisType& source = (const thisType&) env.getFirstArgument();
+   ComparisonResult compareResult = compare(source);
+   if (compareResult == CRGreater)
+      env.setResult(source);
+   else if (compareResult == CRNonComparable) {
+      // AssumeCondition(dynamic_cast<Approximate::Details::RealOperationElement*>(this))
+      // env.setSureNaN();
+      env.setEmpty();
+      return false;
+   };
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::applyMaxAssign(const VirtualOperation&, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const thisType*>(&env.getFirstArgument()))
+   const thisType& source = (const thisType&) env.getFirstArgument();
+   ComparisonResult compareResult = compare(source);
+   if (compareResult == CRLess)
+      env.setResult(source);
+   else if (compareResult == CRNonComparable) {
+      // AssumeCondition(dynamic_cast<Approximate::Details::RealOperationElement*>(this))
+      // env.setSureNaN();
+      env.setEmpty();
+      return false;
+   };
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::applyCompare(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   typedef typename inherited::Operation Operation;
+   AssumeCondition(dynamic_cast<const thisType*>(&env.getFirstArgument()))
+   const thisType& source = (const thisType&) env.getFirstArgument();
+   typename Operation::Type type = ((const Operation&) operation).getType();
+   ComparisonResult compareResult = inheritedImplementation::_compare((const inheritedImplementation&) source);
+   bool result = false;
+   if (compareResult == CRLess)
+      result = (type <= Operation::TCompareLessOrEqual) || (type <= Operation::TCompareDifferent);
+   else if (compareResult == CREqual)
+      result = (type == Operation::TCompareLessOrEqual) || (type == Operation::TCompareEqual)
+         || (type <= Operation::TCompareGreaterOrEqual);
+   else if (compareResult == CRGreater)
+      result = (type >= Operation::TCompareDifferent);
+   env.presult().absorbElement(createCompareResultElement(result));
+   return true;
+}
+
+/* Implementation of the constraint methods */
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::constraintCompareLessOrGreater(const VirtualOperation& operation, VirtualElement& source,
+      Argument arg, ConstraintEnvironment& env) {
+   bool isLess = (((const Operation&) operation).getType() == Operation::TCompareLess)
+      ?  arg.isResult() : arg.isFst();
+   IntersectEnvironment intersectEnv(env, arg.queryInverse());
+   Interval::Init init;
+   init.setBitSize(getSizeInBits());
+   source.intersectWith(Interval(isLess ? init.setGreaterThan(*this) : init.setLessThan(*this)), intersectEnv);
+   if (intersectEnv.hasResult())
+      env.absorb((VirtualElement*) intersectEnv.presult().extractElement(), arg.queryInverse());
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::constraintCompareLessOrGreaterOrEqual(const VirtualOperation& operation, VirtualElement& source,
+      Argument arg, ConstraintEnvironment& env) {
+   bool isLess = (((const Operation&) operation).getType() == Operation::TCompareLessOrEqual)
+      ?  arg.isResult() : arg.isFst();
+   IntersectEnvironment intersectEnv(env, arg.queryInverse());
+   Interval::Init init;
+   init.setBitSize(getSizeInBits());
+   source.intersectWith(Interval(isLess ?  init.setGreaterOrEqualThan(*this) : init.setLessOrEqualThan(*this)), intersectEnv);
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::constraintCompareEqual(const VirtualOperation&, VirtualElement& source,
+      Argument arg, ConstraintEnvironment& env) {
+   IntersectEnvironment intersectEnv(env, arg.queryInverse());
+   source.intersectWith(*this, intersectEnv);
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::constraintCompareDifferent(const VirtualOperation&, VirtualElement& source,
+      Argument arg, ConstraintEnvironment& env) {
+   VirtualElement::InformationKind kind = env.getInformationKind();
+   IntersectEnvironment intersectEnv(env, arg.queryInverse());
+   PPVirtualElement constraint;
+   PNT::TPassPointer<Interval, PPAbstractElement>
+      lessInterval(new Interval(Interval::Init().setBitSize(getSizeInBits()).setLessThan(*this)), PNT::Pointer::Init()),
+      greaterInterval(new Interval(Interval::Init().setBitSize(getSizeInBits()).setGreaterThan(*this)), PNT::Pointer::Init());
+   if (lessInterval->isValid()) {
+      if (greaterInterval->isValid()) {
+         PNT::TPassPointer<Disjunction, PPAbstractElement> constraintDisjunction = Methods::newDisjunction(*this);
+         // PNT::TPassPointer<Disjunction, PPAbstractElement> constraintDisjunction(new Disjunction(
+         //   Disjunction::Init().setBitSize(getSizeInBits()).setTable(*this)), PNT::Pointer::Init());
+         constraintDisjunction->add(lessInterval, kind);
+         constraintDisjunction->add(greaterInterval, kind);
+         constraint = constraintDisjunction;
+      }
+      else
+         constraint = lessInterval;
+   }
+   else if (greaterInterval->isValid())
+      constraint = greaterInterval;
+   if (!constraint.isValid())
+      env.setEmpty();
+   else
+      source.intersectWith(*constraint, intersectEnv);
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::constraintMinAssignWithConstantResult(const VirtualOperation&, VirtualElement& source, const VirtualElement& resultElement, Argument arg, ConstraintEnvironment& env) {
+   AssumeCondition(dynamic_cast<const thisType*>(&resultElement))
+   const thisType& result = (const thisType&) resultElement;
+   ComparisonResult compareResult = inheritedImplementation::_compare((const inheritedImplementation&) result);
+   if (compareResult == CRGreater) {
+      IntersectEnvironment intersectEnv(env, arg.queryInverse());
+      source.intersectWith(result, intersectEnv);
+   }
+   else if (compareResult == CREqual) {
+      IntersectEnvironment intersectEnv(env, arg.queryInverse());
+      source.intersectWith(Interval(Interval::Init().setBitSize(getSizeInBits()).setGreaterOrEqualThan(result)), intersectEnv);
+   }
+   else {
+      AssumeCondition(compareResult == CRLess)
+      env.setEmpty();
+   };
+   if (env.doesStopErrorStates() && env.hasEvaluationError())
+      env.setEmpty();
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::constraintMaxAssignWithConstantResult(const VirtualOperation&, VirtualElement& source, const VirtualElement& resultElement, Argument arg, ConstraintEnvironment& env) {
+   AssumeCondition(dynamic_cast<const thisType*>(&resultElement))
+   const thisType& result = (const thisType&) resultElement;
+   ComparisonResult compareResult = inheritedImplementation::_compare((const inheritedImplementation&) result);
+   if (compareResult == CRLess) {
+      IntersectEnvironment intersectEnv(env, arg.queryInverse());
+      source.intersectWith(result, intersectEnv);
+   }
+   else if (compareResult == CREqual) {
+      IntersectEnvironment intersectEnv(env, arg.queryInverse());
+      source.intersectWith(Interval(Interval::Init().setBitSize(getSizeInBits()).setLessOrEqualThan(result)), intersectEnv);
+   }
+   else {
+      AssumeCondition(compareResult == CRGreater)
+      env.setEmpty();
+   };
+   if (env.doesStopErrorStates() && env.hasEvaluationError())
+      env.setEmpty();
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::constraintArithmeticAssignWithConstantResult(
+      const VirtualOperation& aoperation, VirtualElement& source, const VirtualElement& resultElement,
+      ConstraintEnvironment::Argument arg, ConstraintEnvironment& env) {
+   AssumeCondition(dynamic_cast<const thisType*>(&resultElement)); 
+   EvaluationEnvironment applyEnv(VirtualElement::EPExactStopErrorStates);
+   const thisType& result = (const thisType&) resultElement;
+   inheritedImplementation sourceImplementation(result);
+   const Operation& operation = (const Operation&) aoperation;
+   if (operation.getType() == Operation::TPlusAssign)
+      sourceImplementation.apply(MinusAssignOperation(), *this, applyEnv);
+   else if (operation.getType() == Operation::TMinusAssign) {
+      if (arg.isFst())
+         sourceImplementation.apply(PlusAssignOperation(), *this, applyEnv);
+      else {
+         inheritedImplementation thisImplementation(*this);
+         thisImplementation.apply(MinusAssignOperation(), sourceImplementation, applyEnv);
+         sourceImplementation = thisImplementation;
+      };
+   }
+   else if (operation.getType() == Operation::TTimesAssign)
+      sourceImplementation.apply(DivideAssignOperation(), *this, applyEnv);
+   else {
+      AssumeCondition(operation.getType() == Operation::TDivideAssign)
+      if (arg.isFst())
+         sourceImplementation.apply(TimesAssignOperation(), *this, applyEnv);
+      else {
+         inheritedImplementation thisImplementation(*this);
+         thisImplementation.apply(DivideAssignOperation(), sourceImplementation, applyEnv);
+         sourceImplementation = thisImplementation;
+      };
+   };
+   
+   // Use the right direction for the equatins = not correct for the moment
+   PPVirtualElement newElement;
+   if (env.getInformationKind().isMay()) { // IKSure || IKExact
+      applyEnv.clear();
+      inheritedImplementation resultImplementation(*this);
+      if (operation.getType() == Operation::TPlusAssign)
+         resultImplementation.apply(PlusAssignOperation(), sourceImplementation, applyEnv);
+      else if (operation.getType() == Operation::TMinusAssign)
+         resultImplementation.apply(MinusAssignOperation(), sourceImplementation, applyEnv);
+      else if (operation.getType() == Operation::TTimesAssign)
+         resultImplementation.apply(TimesAssignOperation(), sourceImplementation, applyEnv);
+      else {
+         AssumeCondition(operation.getType() == Operation::TDivideAssign)
+         resultImplementation.apply(DivideAssignOperation(), sourceImplementation, applyEnv);
+      };
+      if (resultImplementation.compare((const inheritedImplementation&) result) != CREqual) {
+         if (env.getInformationKind().isSure()) {
+            env.setEmpty();
+            return true;
+         };
+      }
+      else {
+         newElement.setElement(*this);
+         ((inheritedImplementation&) *newElement).assignPart(sourceImplementation);
+      };
+   };
+
+   if (env.getInformationKind().isSure()) { // IKMay || IKExact
+      inheritedImplementation epsilon = result;
+      epsilon.setToEpsilon();
+      if (operation.getType() == Operation::TTimesAssign)
+         epsilon /= inheritedImplementation::queryEpsilon();
+      else if (operation.getType() == Operation::TDivideAssign) {
+         if (arg.isFst())
+            epsilon *= inheritedImplementation::queryEpsilon();
+         else {
+            inheritedImplementation temp(epsilon);
+            epsilon = *this;
+            epsilon.setToEpsilon();
+            epsilon /= temp;
+         };
+      };
+      ComparisonResult compareEpsilonSource = epsilon.compare(sourceImplementation);
+      if (compareEpsilonSource == CREqual || compareEpsilonSource == CRLess) { // Only one constant is possible
+         if (env.getInformationKind().isMay()) {
+            newElement.setElement(*this);
+            ((inheritedImplementation&) *newElement).assignPart(sourceImplementation);
+         };
+      }
+      else {
+         PPVirtualElement center(*this);
+         ((inheritedImplementation&) *center).assignPart(sourceImplementation);
+
+         inheritedImplementation epsilonTo(*this);
+         epsilonTo.setToEpsilon();
+         Implementation::MultiFloatElement newEpsilon(mantissa().getSize(), exponent().getSize());
+         for (int index = (mantissa().getSize() + 8*(sizeof(unsigned int))-1)/(8*(sizeof(unsigned int)));
+               --index >= 0; )
+            newEpsilon.mantissa()[index] = epsilonTo.mantissa()[index];
+         for (int index = (exponent().getSize() + 8*(sizeof(unsigned int))-1)/(8*(sizeof(unsigned int)));
+               --index >= 0; )
+            newEpsilon.exponent()[index] = epsilonTo.exponent()[index];
+         newEpsilon.setSign(epsilonTo.isPositive());
+
+         PNT::TPassPointer<Constant::VirtualElement, PPAbstractElement>
+            epsilonElement(createConstantMultiFloatElement((const Constant::VirtualElement::InitFloat&)
+                Constant::VirtualElement::InitFloat()
+                  .setSizeMantissa(mantissa().getSize()).setSizeExponent(exponent().getSize())
+                  .setInitialValue(newEpsilon)), PNT::Pointer::Init());
+         if (newElement.isValid()) { // IKExact
+            PPVirtualElement sureElement = newElement;
+            newElement = Methods::newDisjunction(*this);
+            // newElement.absorbElement(new Disjunction(Disjunction::Init().setTable(*this)));
+            ((Disjunction&) *newElement).addSure(sureElement)
+               .addMay(new EpsilonInterval(EpsilonInterval::Init().setInterval(center, *epsilonElement)));
+         }
+         else
+            newElement.absorbElement(new EpsilonInterval(EpsilonInterval::Init().setInterval(
+               center, *epsilonElement)));
+      };
+   };
+
+   IntersectEnvironment intersectEnv(env, ConstraintEnvironment::Argument().setFst());
+   intersectEnv.setFirstArgument(*this);
+   env.getFirstArgument().intersectWith(*newElement, intersectEnv);
+   env.mergeVerdictDegradate();
+   return true;
+}
+
+/* Implementation of the query methods */
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::queryCompareSpecial(const QueryOperation&, typename QueryOperation::Environment& aenv) const {
+   typedef typename inherited::CompareSpecialEnvironment CompareSpecialEnvironment;
+   CompareSpecialEnvironment& result = (CompareSpecialEnvironment&) aenv;
+   if (inheritedImplementation::isZero())
+      result.mergeBehaviour(CompareSpecialEnvironment::BEqual0);
+   else if (inheritedImplementation::getBasicExponent() == inheritedImplementation::getInftyExponent()) {
+      if (inheritedImplementation::isNaN())
+         result.mergeBehaviour(CompareSpecialEnvironment::BNaN);
+      else {
+         if (inheritedImplementation::isPositive())
+            result.mergeBehaviour(CompareSpecialEnvironment::BInfty);
+         else
+            result.mergeBehaviour(CompareSpecialEnvironment::BMInfty);
+      }
+   }
+   else if (inheritedImplementation::isPositive()) {
+      inheritedImplementation one(mantissa().getSize(), exponent().getSize());
+      one.exponent() = typename inheritedImplementation::Exponent(typename inheritedImplementation::Exponent::One(), exponent().getSize());
+      ComparisonResult compare = inheritedImplementation::_compare(one);
+      if (compare == CRGreater) {
+         if (inheritedImplementation::getBasicExponent() == inheritedImplementation::getMaxExponent()+inheritedImplementation::getZeroExponent()) {
+            if (typename inheritedImplementation::Mantissa(mantissa()).neg().isZero()) {
+               result.mergeBehaviour(CompareSpecialEnvironment::BMax);
+               return true;
+            };
+         };
+         result.mergeBehaviour(CompareSpecialEnvironment::BGreater1);
+      }
+      else if (compare == CREqual)
+         result.mergeBehaviour(CompareSpecialEnvironment::BEqual1);
+      else // compare == CRLess
+         result.mergeBehaviour(CompareSpecialEnvironment::BBetween0_1);
+   }
+   else { // deElement.isNegative()
+      inheritedImplementation minusOne(mantissa().getSize(), exponent().getSize());
+      minusOne.exponent() = typename inheritedImplementation::Exponent(typename inheritedImplementation::Exponent::One(), exponent().getSize());
+      minusOne.setNegative();
+      ComparisonResult compare = inheritedImplementation::_compare(minusOne);
+      if (compare == CRLess) {
+         if (inheritedImplementation::getBasicExponent() == inheritedImplementation::getMaxExponent()+inheritedImplementation::getZeroExponent()) {
+            if (typename inheritedImplementation::Mantissa(mantissa()).neg().isZero()) {
+               result.mergeBehaviour(CompareSpecialEnvironment::BMin);
+               return true;
+            };
+         };
+         result.mergeBehaviour(CompareSpecialEnvironment::BLessM1);
+      }
+      else if (compare == CREqual)
+         result.mergeBehaviour(CompareSpecialEnvironment::BEqualM1);
+      else // compare == CRGreater
+         result.mergeBehaviour(CompareSpecialEnvironment::BBetweenM1_0);
+   };
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::queryGuardAll(const QueryOperation&, typename QueryOperation::Environment& aenv) const {
+   AssumeCondition(dynamic_cast<const VirtualQueryOperation::GuardEnvironment*>(&aenv))
+   VirtualQueryOperation::GuardEnvironment& env = (VirtualQueryOperation::GuardEnvironment&) aenv;
+   env.presult() = Scalar::Approximate::Details::RealOperationElement::Methods::newTrue(*this);
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::queryInverseCastOperation(const VirtualElement& thisElement, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   typename inherited::QueryOperation::InverseCastOperationEnvironment& env = (typename inherited::QueryOperation::InverseCastOperationEnvironment&) aenv;
+   Scalar::Floating::Operation::Type type = ((const Operation&) env.reference()).getType();
+   bool result = true;
+   QueryOperation::SizesEnvironment sizesEnv;
+   thisElement.query(QueryOperation().setSizes(), sizesEnv);
+   if ((type >= Operation::TCastFloat) && (type <= Operation::TCastLongDouble)) {
+      CastMultiFloatOperation* presult = new CastMultiFloatOperation();
+      env.absorbResult(presult);
+      presult->setSizeMantissa(sizesEnv.sizeMantissa());
+      presult->setSizeExponent(sizesEnv.sizeExponent());
+      presult->setSigned();
+   }
+   else if (type == Operation::TCastMultiFloat) {
+      CastMultiFloatOperation* presult = new CastMultiFloatOperation();
+      env.absorbResult(presult);
+      presult->setSizeMantissa(sizesEnv.sizeMantissa());
+      presult->setSizeExponent(sizesEnv.sizeExponent());
+      presult->setSigned();
+   }
+   else if (type == Operation::TCastMultiBit) {
+      MultiBit::CastMultiFloatOperation* presult = new MultiBit::CastMultiFloatOperation();
+      env.absorbResult(presult);
+      presult->setSizeMantissa(sizesEnv.sizeMantissa());
+      presult->setSizeExponent(sizesEnv.sizeExponent());
+      presult->setSigned();
+   }
+   else if (type == Operation::TCastMultiBitPointer) {
+      CastMultiFloatOperation* presult = new CastMultiFloatOperation();
+      env.absorbResult(presult);
+      presult->setSizeMantissa(sizesEnv.sizeMantissa());
+      presult->setSizeExponent(sizesEnv.sizeExponent());
+      presult->setSigned();
+   }
+   else if (type == Operation::TCastRational) {
+      Rational::CastMultiFloatOperation* presult = new Rational::CastMultiFloatOperation();
+      env.absorbResult(presult);
+      presult->setSizeMantissa(sizesEnv.sizeMantissa());
+      presult->setSizeExponent(sizesEnv.sizeExponent());
+      presult->setSigned();
+   }
+   else
+      { AssumeUncalled }
+   return result;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::querySizes(const QueryOperation&, QueryOperation::Environment& aenv) const {
+   AssumeCondition(dynamic_cast<const QueryOperation::SizesEnvironment*>(&aenv))
+   QueryOperation::SizesEnvironment& env = (QueryOperation::SizesEnvironment&) aenv;
+   int sizeMantissa = mantissa().getSize();
+   int sizeExponent = exponent().getSize();
+   env.setSizeMantissa(sizeMantissa).setSizeExponent(sizeExponent).setSize(sizeMantissa+sizeExponent+1);
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::queryNewDisjunction(const VirtualElement& thisElement, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::SizesEnvironment sizesEnv;
+   thisElement.query(QueryOperation().setSizes(), sizesEnv);
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(new Disjunction((const Disjunction::InitFloat&) Disjunction::InitFloat()
+         .setBitSize(thisElement.getSizeInBits()).setSizeMantissa(sizesEnv.sizeMantissa())
+         .setSizeExponent(sizesEnv.sizeExponent()).setTable(thisElement)));
+   return true;
+}
+
+template <class TypeImplementation>
+bool
+TMultiConstantElement<TypeImplementation>::queryNewInterval(const VirtualElement& thisElement, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   AssumeCondition(dynamic_cast<const Scalar::Approximate::Details::VirtualRealInterval::Init*>(&env.init()))
+   env.presult().absorbElement(new Interval(
+      ((const Scalar::Approximate::Details::VirtualRealInterval::Init&) env.init())));
+   return true;
+}
+
+} // end of namespace DMultiConstantElement
+
+template <class TypeBased, class TypeRingTraits>
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::MethodApplyTable::MethodApplyTable() {
+#include "StandardClasses/UndefineNew.h"
+#define DefineInitApplyMethodTable(TypeOperation)                                                 \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&TCloseMultiConstantElement<TypeBased, TypeRingTraits>::apply##TypeOperation);
+#define DefineInitApplyOMethodTable(TypeOperation, TypeMethod)                                         \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&TCloseMultiConstantElement<TypeBased, TypeRingTraits>::apply##TypeMethod);
+
+   DefineInitApplyMethodTable(CastFloat)
+   DefineInitApplyMethodTable(CastDouble)
+   DefineInitApplyMethodTable(CastLongDouble)
+   // DefineInitApplyMethodTable(CastRational)
+   // DefineInitApplyMethodTable(CastReal)
+
+#undef DefineInitApplyMethodTable
+#undef DefineInitApplyOMethodTable
+#include "StandardClasses/DefineNew.h"
+}
+
+template <class TypeBased, class TypeRingTraits>
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::MethodQueryTable::MethodQueryTable() {
+#include "StandardClasses/UndefineNew.h"
+   VirtualElement::FunctionQueryTable* table = &inherited::elementAt(VirtualQueryOperation::TDomain).getFunctionTable();
+
+#define DefineInitQueryMethodTable(TypeOperation)                                               \
+   (*table)[QueryOperation::TD##TypeOperation].setMethod(&TCloseMultiConstantElement<TypeBased, TypeRingTraits>::queryNew##TypeOperation);
+#define DefineInitQueryOMethodTable(TypeOperation, TypeMethod)                                               \
+   (*table)[QueryOperation::TD##TypeOperation].setMethod(&TCloseMultiConstantElement<TypeBased, TypeRingTraits>::queryNew##TypeMethod);
+   
+   DefineInitQueryMethodTable(BooleanDisjunction)
+   DefineInitQueryMethodTable(MultiBitConstant)
+   DefineInitQueryMethodTable(MultiFloatConstant)
+   DefineInitQueryMethodTable(Top)
+   DefineInitQueryMethodTable(False)
+   DefineInitQueryMethodTable(True)
+   DefineInitQueryMethodTable(Zero)
+   DefineInitQueryMethodTable(Min)
+   DefineInitQueryMethodTable(Max)
+
+#undef DefineInitQueryMethodTable
+#undef DefineInitQueryOMethodTable
+#include "StandardClasses/DefineNew.h"
+}
+
+template <class TypeBased, class TypeRingTraits>
+typename TCloseMultiConstantElement<TypeBased, TypeRingTraits>::MethodApplyTable
+   TCloseMultiConstantElement<TypeBased, TypeRingTraits>::matMethodApplyTable;
+   
+template <class TypeBased, class TypeRingTraits>
+typename TCloseMultiConstantElement<TypeBased, TypeRingTraits>::MethodQueryTable
+   TCloseMultiConstantElement<TypeBased, TypeRingTraits>::mqtMethodQueryTable;
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::query(const VirtualQueryOperation& operation, VirtualQueryOperation::Environment& env) const {
+   return inherited::query(operation, env) ? true
+      : Scalar::Approximate::Details::MethodAccess<DomainTraits>::query(*this, (const QueryOperation&) operation, env);
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::apply(const VirtualOperation& operation, Scalar::EvaluationEnvironment& env) {
+   return inherited::apply(operation, env) ? true
+      : Scalar::Approximate::Details::MethodAccess<DomainTraits>::apply(*this, (const typename inherited::Operation&) operation, (EvaluationEnvironment&) env);
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::mergeWith(const Scalar::VirtualElement& source, Scalar::EvaluationEnvironment& env) {
+   if (inherited::mergeWith(source, env))
+      return true;
+   return Scalar::Approximate::Details::MethodAccess<DomainTraits>::mergeWithConstantFloat(*this, (const VirtualElement&) source, (EvaluationEnvironment&) env);
+}
+
+template <class TypeBased, class TypeRingTraits>
+VirtualElement*
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::_createCompareResultElement(bool value) const
+   {  return TypeRingTraits::createBitElement(VirtualElement::Init()
+         .setInitialValue(Scalar::Integer::Implementation::IntElement(value)));
+   }
+
+template <class TypeBased, class TypeRingTraits>
+VirtualElement*
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::_createMultiBitElement(const typename TypeBased::Init& init) const
+   {  return TypeRingTraits::createMultiBitElement(init); }
+
+template <class TypeBased, class TypeRingTraits>
+Constant::VirtualElement*
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::_createConstantMultiFloatElement(const Constant::VirtualElement::InitFloat& init) const
+   {  return TypeRingTraits::createConstantMultiFloatElement(init); }
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::applyCastFloat(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   PPVirtualElement floatElement(TypeRingTraits::createFloatElement(VirtualElement::InitFloat()), PNT::Pointer::Init());
+   VirtualElement::InitFloat init;
+   inherited::retrieveApplyCastFloatInInit(init, floatElement, env);
+   env.presult().absorbElement(TypeRingTraits::createFloatElement(init));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::applyCastDouble(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   PPVirtualElement floatElement(TypeRingTraits::createDoubleElement(VirtualElement::InitFloat()), PNT::Pointer::Init());
+   VirtualElement::InitFloat init;
+   inherited::retrieveApplyCastFloatInInit(init, floatElement, env);
+   env.presult().absorbElement(TypeRingTraits::createDoubleElement(init));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::applyCastLongDouble(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   PPVirtualElement floatElement(TypeRingTraits::createLongDoubleElement(VirtualElement::InitFloat()), PNT::Pointer::Init());
+   VirtualElement::InitFloat init;
+   inherited::retrieveApplyCastFloatInInit(init, floatElement, env);
+   env.presult().absorbElement(TypeRingTraits::createLongDoubleElement(init));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::queryNewMultiBitConstant(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(TypeRingTraits::createMultiBitElement(env.init()));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::queryNewMultiFloatConstant(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& deEnv = (QueryOperation::DomainEnvironment&) aenv;
+   deEnv.presult().absorbElement(TypeRingTraits::createMultiFloatElement((const VirtualElement::InitFloat&) deEnv.init()));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::queryNewTop(const VirtualElement& thisElement, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::SizesEnvironment sizesEnv;
+   thisElement.query(QueryOperation().setSizes(), sizesEnv);
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(new Top((const Top::InitFloat&) typename Top::InitFloat()
+         .setBitSize(sizesEnv.size()).setTable(thisElement)
+         .setApplyTop(&Scalar::Approximate::Details::TTopCast<TypeRingTraits>::applyFloatingTop)
+         .setApplyToTop(&Scalar::Approximate::Details::TTopCast<TypeRingTraits>::applyToFloatingTop)
+         .setConstraintTop(&Scalar::Approximate::Details::TTopCast<TypeRingTraits>::constraintFloatingTop)
+         .setSizeMantissa(sizesEnv.sizeMantissa()).setSizeExponent(sizesEnv.sizeExponent())));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::queryNewZero(const VirtualElement& thisElement, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   QueryOperation::SizesEnvironment sizesEnv;
+   thisElement.query(QueryOperation().setSizes(), sizesEnv);
+   
+   env.presult().absorbElement(TypeRingTraits::createMultiFloatElement((const VirtualElement::InitFloat&)
+      VirtualElement::InitFloat()
+      .setSizeMantissa(sizesEnv.sizeMantissa()).setSizeExponent(sizesEnv.sizeExponent())
+      .setBitSize(sizesEnv.size())));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::queryNewMin(const VirtualElement& thisElement, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   QueryOperation::SizesEnvironment sizesEnv;
+   thisElement.query(QueryOperation().setSizes(), sizesEnv);
+   
+   Scalar::Floating::Implementation::MultiFloatElement initial(sizesEnv.sizeMantissa(), sizesEnv.sizeExponent());
+   initial.mantissa().neg();
+   initial.exponent().neg().dec();
+   initial.setNegative();
+   env.presult().absorbElement(TypeRingTraits::createMultiFloatElement((const VirtualElement::InitFloat&)
+      VirtualElement::InitFloat()
+      .setSizeMantissa(sizesEnv.sizeMantissa()).setSizeExponent(sizesEnv.sizeExponent())
+      .setBitSize(sizesEnv.size()).setInitialValue(initial)));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::queryNewMax(const VirtualElement& thisElement, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   QueryOperation::SizesEnvironment sizesEnv;
+   thisElement.query(QueryOperation().setSizes(), sizesEnv);
+   
+   Scalar::Floating::Implementation::MultiFloatElement initial(sizesEnv.sizeMantissa(), sizesEnv.sizeExponent());
+   initial.mantissa().neg();
+   initial.exponent().neg().dec();
+   initial.setPositive();
+   env.presult().absorbElement(TypeRingTraits::createMultiFloatElement((const VirtualElement::InitFloat&)
+      VirtualElement::InitFloat()
+      .setSizeMantissa(sizesEnv.sizeMantissa()).setSizeExponent(sizesEnv.sizeExponent())
+      .setBitSize(sizesEnv.size()).setInitialValue(initial)));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::queryNewTrue(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement result(TypeRingTraits::createBitElement(VirtualElement::Init()), PNT::Pointer::Init());
+   env.presult() = Methods::applyAssign(result, Scalar::Bit::NextAssignOperation(), VirtualElement::EPExactStopErrorStates);
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::queryNewFalse(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(TypeRingTraits::createBitElement(VirtualElement::Init()));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseMultiConstantElement<TypeBased, TypeRingTraits>::queryNewBooleanDisjunction(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement thisElement(TypeRingTraits::createBitElement(VirtualElement::Init()), PNT::Pointer::Init());
+   env.presult().absorbElement(new Disjunction(Disjunction::Init().setBitSize(thisElement->getSizeInBits())
+         .setTable(*thisElement)));
+   return true;
+}
+
+}} // end of namespace Floating::Approximate
+
+}} // end of namespace Analyzer::Scalar
+
+#endif // Analyzer_Scalar_Approximate_ConstantMultiFloatTemplate
+
+

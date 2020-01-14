@@ -1,0 +1,315 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : approximate scalar elements
+// File      : VirtualCall.incc
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Definition of default methods for approximate lattices.
+//
+
+/* DefineTypeObject        : type of the class                             */
+/* DefineTypeConstant      : is class constant                             */
+/* DefineTypeFloat         : is a floating point type (merge by intervals) */
+/* DefineTypeInterval      : interval class                                */
+
+#ifndef DefineTemplateHeader
+#define DefineTemplateHeader 
+#else
+#define DefineHasTemplateHeader
+#endif
+
+/***************************************/
+/* Implementation of the apply methods */
+/***************************************/
+
+DefineTemplateHeader
+bool
+DefineTypeObject::apply(const VirtualOperation& aoperation, Scalar::EvaluationEnvironment& aenv) {
+   EvaluationEnvironment& env = (EvaluationEnvironment&) aenv;
+   const Scalar::DefineTypeOperation::Operation& operation = (const Scalar::DefineTypeOperation::Operation&) aoperation;
+   if (inherited::apply(operation, env))
+      return true;
+   Scalar::DefineTypeOperation::Operation::Type type = operation.getType();
+   PPVirtualElement copy;
+   if (operation.isConstWithAssign()) {
+      copy.setElement(*this);
+      const_cast<Scalar::DefineTypeOperation::Operation&>(operation).clearConstWithAssign();
+      assume(matMethodApplyTable[type].execute((DefineTypeObject&) *copy, operation, env));
+      const_cast<Scalar::DefineTypeOperation::Operation&>(operation).setConstWithAssign();
+      if (!env.isEmpty() && !env.presult().isValid())
+         env.presult() = copy;
+   }
+   else
+      assume(matMethodApplyTable[type].execute(*this, operation, env));
+   return true;
+}
+
+#ifndef DefineTypeConstant
+
+DefineTemplateHeader
+bool
+DefineTypeObject::applyTo(const VirtualOperation& aoperation, Approximate::VirtualElement& argument,
+      EvaluationEnvironment& env) const {
+   const Scalar::DefineTypeOperation::Operation& operation = (const Scalar::DefineTypeOperation::Operation&) aoperation;
+   // AssumeCondition(getType() > argument.getType())
+   assume(mattMethodApplyToTable[operation.getType()].execute(*this, operation, argument, env));
+   return true;
+}
+
+#endif // !DefTypeConstant
+
+/***************************************/
+/* Implementation of the query methods */
+/***************************************/
+
+DefineTemplateHeader
+bool
+DefineTypeObject::query(const VirtualQueryOperation& aoperation, VirtualQueryOperation::Environment& env) const {
+   if (inherited::query(aoperation, env))
+      return true;
+   const QueryOperation& operation = (const QueryOperation&) aoperation;
+   assume(mqtMethodQueryTable[operation.getType()].execute(*this, operation, env));
+   return true;
+}
+
+/*****************************************************/
+/* Implementation of the merge and intersect methods */
+/*****************************************************/
+
+#ifndef DefineExcludeMergeIntersectMethods
+#ifdef DefineTypeConstant
+
+DefineTemplateHeader
+bool
+DefineTypeObject::mergeWith(const Scalar::VirtualElement& asource, Scalar::EvaluationEnvironment& aenv) {
+   if (inherited::mergeWith(asource, aenv))
+      return true;
+   EvaluationEnvironment& env = (EvaluationEnvironment&) aenv;
+   const VirtualElement& source = (const VirtualElement&) asource;
+   
+   AssumeCondition(source.getApproxKind().isConstant())
+   PPVirtualElement minusElement = Methods::apply(*this, Methods::queryMinusSigned(*this), source, EvaluationParameters(env));
+   env.mergeVerdictExact();
+   QueryOperation::CompareSpecialEnvironment compare = Methods::compareSpecial(*minusElement);
+   if (compare.isZero())
+      return true;
+   env.setUnstable();
+   EvaluationEnvironment::LatticeCreation latticeCreation = env.getLatticeCreation();
+   if ((latticeCreation.isTop() || latticeCreation.isShareTop())) {
+      env.presult() = Methods::newTop(*this);
+      return true;
+   };
+#ifndef DefineTypeFloat
+   if (compare.isOne() && (getElement() != getMax()))
+      env.presult() = Methods::newInterval(*this, VirtualIntegerInterval::Init().setInterval(source, *this));
+   else if (compare.isMinusOne() && (getElement() != getMin()))
+      env.presult() = Methods::newInterval(*this, VirtualIntegerInterval::Init().setInterval(*this, source));
+   else
+#endif
+   {  if (latticeCreation.isInterval()) {
+         if (compare.isGreaterOrEqualZero())
+            env.presult() = Methods::newInterval(*this, VirtualIntegerInterval::Init().setInterval(source, *this));
+         else if (compare.isLessOrEqualZero())
+            env.presult() = Methods::newInterval(*this, VirtualIntegerInterval::Init().setInterval(*this, source));
+         else
+            env.presult() = Methods::newTop(*this);
+         return true;
+      };
+      PNT::TPassPointer<VirtualDisjunction, PPAbstractElement> disjunction
+         = Methods::newDisjunction(*this);
+      disjunction->add(source, env.getInformationKind()).add(*this, env.getInformationKind());
+      env.presult() = disjunction;
+   };
+   return true;
+}
+
+DefineTemplateHeader
+bool
+DefineTypeObject::contain(const Scalar::VirtualElement& asource, Scalar::EvaluationEnvironment& aenv) const {
+   EvaluationEnvironment& env = (EvaluationEnvironment&) aenv;
+   const VirtualElement& source = (const VirtualElement&) asource;
+   if (source.getApproxKind().compareApply(getApproxKind()) == CRGreater)
+      return source.containTo(*this, env);
+   AssumeCondition(dynamic_cast<const DefineTypeObject*>(&source))
+   if (compare((const DefineTypeObject&) source) != CREqual)
+      env.setNoneApplied();
+   return true;
+}
+
+DefineTemplateHeader
+bool
+DefineTypeObject::intersectWith(const VirtualElement& source, EvaluationEnvironment& env) {
+   if (VirtualElement::intersectWith(source, env))
+      return true;
+   AssumeCondition(source.getApproxKind().isConstant())
+   PPVirtualElement minusElement = Methods::apply(*this, Methods::queryMinus(*this), source, EvaluationParameters(env));
+   env.mergeVerdictExact();
+   QueryOperation::CompareSpecialEnvironment compare = Methods::compareSpecial(*minusElement);
+   if (!compare.isZero())
+      env.setEmpty();
+   return true;
+}
+
+#endif // DefineTypeConstant
+
+#ifdef DefineTypeInterval 
+
+DefineTemplateHeader
+bool
+DefineTypeObject::mergeWith(const Scalar::VirtualElement& asource, Scalar::EvaluationEnvironment& aenv) {
+   if (VirtualElement::mergeWith(asource, aenv))
+      return true;
+   EvaluationEnvironment& env = (EvaluationEnvironment&) aenv;
+   const VirtualElement& source = (const VirtualElement&) asource;
+   
+   AssumeCondition(source.getApproxKind().compareApply(ApproxKind().setInterval()) <= CREqual)
+   bool result = false;
+   if (source.getApproxKind().compareApply(ApproxKind().setInterval()) == CRLess) {
+      if (source.getApproxKind().isConstant())
+         result = mergeWithConstant(source, env);
+      else
+         result = source.mergeWithTo(*this, env);
+   }
+   else
+      result = mergeWithInterval(source, env);
+   return result;
+}
+
+DefineTemplateHeader
+bool
+DefineTypeObject::contain(const Scalar::VirtualElement& asource, Scalar::EvaluationEnvironment& aenv) const {
+   EvaluationEnvironment& env = (EvaluationEnvironment&) aenv;
+   const VirtualElement& source = (const VirtualElement&) asource;
+   ComparisonResult compareType = source.getApproxKind().compareApply(getApproxKind());
+   bool result = false;
+   if (compareType == CRGreater)
+      result = source.containTo(*this, env);
+   else if (compareType == CRLess) {
+      if (source.getApproxKind().compareApply(ApproxKind().setConstant()) <= CREqual)
+         result = containConstant(source, env);
+      else
+         result = source.containTo(*this, env);
+   }
+   else
+      result = containInterval(source, env);
+   return result;
+}
+
+DefineTemplateHeader
+bool
+DefineTypeObject::intersectWith(const VirtualElement& source, EvaluationEnvironment& env) {
+   if (VirtualElement::intersectWith(source, env))
+      return true;
+   AssumeCondition(source.getApproxKind().compareConstraint(getApproxKind()) >= CREqual)
+   if (source.getApproxKind().compareConstraint(getApproxKind()) == CRGreater)
+      intersectWithGeneric(source, env);
+   else
+      intersectWithInterval(source, env);
+   return true;
+}
+
+DefineTemplateHeader
+bool
+DefineTypeObject::mergeWithTo(VirtualElement& source, EvaluationEnvironment& env) const {
+   AssumeCondition(source.getApproxKind().compareApply(getApproxKind()) == CRLess)
+   assume(mergeWithToConstant(source, env));
+   return true;
+}
+
+DefineTemplateHeader
+bool
+DefineTypeObject::containTo(const VirtualElement& source, EvaluationEnvironment& env) const {
+   AssumeCondition(source.getApproxKind().compareApply(getApproxKind()) == CRLess)
+   return containToConstant(source, env);
+}
+
+DefineTemplateHeader
+bool
+DefineTypeObject::intersectWithTo(VirtualElement& source, EvaluationEnvironment& env) const {
+   AssumeCondition(source.getApproxKind().compareConstraint(ApproxKind().setConstant()) >= CREqual)
+   PPVirtualElement ppveThis(*this);
+   assume(((DefineTypeObject&) *ppveThis).intersectWithGeneric(source, env));
+   env.presult() = ppveThis;
+   return true;
+}
+
+#endif // DefineTypeInterval
+#endif // DefineExcludeMergeIntersectMethods
+
+/********************************************/
+/* Implementation of the constraint methods */
+/********************************************/
+
+DefineTemplateHeader
+bool
+DefineTypeObject::constraint(const VirtualOperation& aoperation, const VirtualElement& resultElement,
+      ConstraintEnvironment& env) {
+   if (inherited::constraint(aoperation, resultElement, env))
+      return true;
+      
+   const Scalar::DefineTypeOperation::Operation& operation = (const Scalar::DefineTypeOperation::Operation&) aoperation;
+#ifdef DefineTypeConstant
+   AssumeCondition(aoperation.getArgumentsNumber() == 1)
+#else
+   if (aoperation.getArgumentsNumber() == 0) {
+      return mctMethodConstraintTable.unaryTable()[operation.getType()]
+         .execute(*this, operation, resultElement, env);
+   };
+#endif
+   
+   if ((operation.getType() >= Scalar::DefineTypeOperation::Operation::StartOfCompare)
+         && (operation.getType() < Scalar::DefineTypeOperation::Operation::EndOfCompare)) {
+      ZeroResult zeroResult = resultElement.queryZeroResult();
+      if (zeroResult.isTrue()) {
+         return mctMethodConstraintTable.compareTable()[operation.getType()]
+            .execute(*this, aoperation, env.getFirstArgument(), Argument().setResult(), env);
+      }
+      else if (zeroResult.isFalse()) {
+         Scalar::DefineTypeOperation::Operation::Type inverseOperation = (Scalar::DefineTypeOperation::Operation::Type)
+            (Scalar::DefineTypeOperation::Operation::EndOfCompare-1 - operation.getType() + Scalar::DefineTypeOperation::Operation::StartOfCompare);
+         return mctMethodConstraintTable.compareTable()[inverseOperation]
+            .execute(*this, aoperation, env.getFirstArgument(), Argument().setResult(), env);
+      }
+      else
+         env.mergeVerdictDegradate();
+      return true;
+   };
+   return mctMethodConstraintTable.binaryTable()[operation.getType()]
+      .execute(*this, aoperation, env.getFirstArgument(), resultElement, Argument().setResult(), env);
+}
+
+DefineTemplateHeader
+bool
+DefineTypeObject::constraintTo(const VirtualOperation& aoperation, VirtualElement& sourceElement,
+      const VirtualElement& resultElement, ConstraintEnvironment& env) {
+   const Scalar::DefineTypeOperation::Operation& operation = (const Scalar::DefineTypeOperation::Operation&) aoperation;
+   if ((operation.getType() >= Scalar::DefineTypeOperation::Operation::StartOfCompare)
+         && (operation.getType() < Scalar::DefineTypeOperation::Operation::EndOfCompare)) {
+      ZeroResult zeroResult = resultElement.queryZeroResult();
+      if (zeroResult.isTrue())
+         return mctMethodConstraintTable.compareTable()[operation.getType()]
+            .execute(*this, aoperation, sourceElement, Argument().setFst(), env);
+      else if (zeroResult.isFalse()) {
+         Scalar::DefineTypeOperation::Operation::Type inverseOperation = (Scalar::DefineTypeOperation::Operation::Type)
+            (Scalar::DefineTypeOperation::Operation::EndOfCompare-1 - operation.getType()
+            + Scalar::DefineTypeOperation::Operation::StartOfCompare);
+         return mctMethodConstraintTable.compareTable()[inverseOperation]
+            .execute(*this, aoperation, sourceElement, Argument().setFst(), env);
+      }
+      else
+         env.mergeVerdictDegradate();
+      return true;
+   };
+   return mctMethodConstraintTable.binaryTable()[operation.getType()]
+      .execute(*this, aoperation, sourceElement, resultElement, Argument().setFst(), env);
+}
+
+#ifndef DefineHasTemplateHeader
+#undef DefineTemplateHeader
+#else
+#undef DefineHasTemplateHeader
+#endif
+

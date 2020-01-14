@@ -1,0 +1,82 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : implementation of scalar elements specific to source code analysis
+// File      : IntegerElement.inch
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Definition of the integer classes
+//
+
+/* DefineTypeIntegerElement      : name of the class                             */
+/* DefineTypeImplementation      : type of the implementation: long, int, char   */
+/* DefineTypeRealImplementation  : actual type for the simulated implementation  */
+/* DefineTypeCastAssign          : defines the compatible types                  */
+/* DefineTypeInherited           : inherited base class                          */
+
+#define DefineIntegerAssign(TypeInteger)                                                         \
+   void assign(const TypeInteger& source, EvaluationEnvironment& env);
+
+class DefineTypeIntegerElement : public DefineTypeInherited {
+  private:
+   typedef DefineTypeInherited inherited;
+   typedef DefineTypeIntegerElement thisType;
+   DefineTypeImplementation uElement;
+
+  protected:
+   virtual ComparisonResult _compare(const EnhancedObject& asource) const override
+      {  ComparisonResult result = inherited::_compare(asource);
+         const thisType& source = (const thisType&) asource;
+         return (result == CREqual) ? fcompare(uElement, source.uElement) : result;
+      }
+   void assign(DefineTypeImplementation element) { uElement = element; }
+
+  public:
+   typedef DefineTypeRealImplementation SimulatedType;
+   static SimulatedType getMax();
+   static SimulatedType getMin();
+   DefineTypeCastAssign
+
+   DefineTypeIntegerElement(DefineTypeImplementation element=0) : uElement(element)
+      {  DefineConstructor }
+   DefineTypeIntegerElement(const thisType& source) = default;
+   thisType& operator=(const thisType& source) = default;
+   DefineCopy(DefineTypeIntegerElement)
+   DDefineAssign(DefineTypeIntegerElement)
+
+   DefineTypeRealImplementation getElement() const { return (DefineTypeRealImplementation) uElement; }
+   void setElement(DefineTypeRealImplementation element) { uElement = (DefineTypeImplementation) element; }
+
+   void apply(const PrevAssignOperation&, EvaluationEnvironment& env);
+   void apply(const NextAssignOperation&, EvaluationEnvironment& env);
+   void apply(const PlusAssignOperation&, const thisType& source, EvaluationEnvironment& env);
+   void apply(const MinusAssignOperation&, const thisType& source, EvaluationEnvironment& env);
+
+   // numeric methods
+   void apply(const OppositeAssignOperation&, EvaluationEnvironment& env);
+   void apply(const TimesAssignOperation&, const thisType& source, EvaluationEnvironment& env);
+   void apply(const DivideAssignOperation&, const thisType& source, EvaluationEnvironment& env);
+
+   void apply(const ModuloAssignOperation&, const thisType& source, EvaluationEnvironment& env);
+
+   // integer methods
+   void apply(const BitOrAssignOperation&, const thisType& source, EvaluationEnvironment& env)
+      {  uElement |= source.uElement; }
+   void apply(const BitAndAssignOperation&, const thisType& source, EvaluationEnvironment& env)
+      {  uElement &= source.uElement; }
+   void apply(const BitExclusiveOrAssignOperation&, const thisType& source, EvaluationEnvironment& env)
+      {  uElement ^= source.uElement; }
+   void apply(const BitNegateAssignOperation&, EvaluationEnvironment& env)
+      {  uElement = ~uElement; }
+   void apply(const LeftShiftAssignOperation&, int value, EvaluationEnvironment& env);
+   void apply(const RightShiftAssignOperation&, int value, EvaluationEnvironment& env);
+   void apply(const LeftRotateAssignOperation&, int value, EvaluationEnvironment& env);
+   void apply(const RightRotateAssignOperation&, int value, EvaluationEnvironment& env);
+
+   static int getSize();
+   static bool isSigned();
+};
+
+#undef DefineIntegerAssign

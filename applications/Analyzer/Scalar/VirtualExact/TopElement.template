@@ -1,0 +1,43 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : TopElement.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of undefined compilation constants
+//     or undefined elements used in simulation/symbolic execution.
+//
+
+#ifndef Analyzer_Scalar_VirtualExact_TopElementTEMPLATE
+#define Analyzer_Scalar_VirtualExact_TopElementTEMPLATE
+
+#include "Analyzer/Scalar/VirtualExact/TopElement.h"
+// #include "Analyzer/Scalar/Scalar.hpp"
+
+namespace Analyzer { namespace Scalar { namespace VirtualExact {
+
+/********************************************************/
+/* Implementation of the template class TBadCastElement */
+/********************************************************/
+
+template <class TypeBase>
+bool
+TBadCastElement<TypeBase>::applyUndefined(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   env.storeResult(TypeBase::getUndefined());
+   return true;
+}
+
+template <class TypeBase>
+bool
+TBadCastElement<TypeBase>::applyToUndefined(const VirtualOperation& operation, TypeBase& source, typename TypeBase::ApplyEnvironment& env) const {
+   env.storeResult(TypeBase::getUndefined());
+   return true;
+}
+
+}}} // end of namespace Analyzer::Scalar::VirtualExact
+
+#endif // Analyzer_Scalar_VirtualExact_TopElementTEMPLATE
+

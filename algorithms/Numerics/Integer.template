@@ -1,0 +1,19 @@
+/////////////////////////////////
+//
+// Library   : Numerics
+// Unit      : Integer
+// File      : Integer.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of a class of integers with unbound size.
+//
+
+#ifndef Numerics_IntegerTemplate
+#define Numerics_IntegerTemplate
+
+#include "Numerics/Integer.h"
+#include "ForwardNumerics/BaseInteger.template"
+
+#endif // Numerics_IntegerTemplate

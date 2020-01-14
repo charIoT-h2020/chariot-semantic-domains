@@ -1,0 +1,25 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : NativeVirtualExact.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of a an intermediate hierarchy of classes
+//     that are very helpful to define the compilation constants
+//     and the scalar elements used in simulation/symbolic execution.
+//   All this stuff is rather defined for source code analysis.
+//
+
+#ifndef Analyzer_Scalar_VirtualExact_NativeVirtualExactTEMPLATE
+#define Analyzer_Scalar_VirtualExact_NativeVirtualExactTEMPLATE
+
+#include "Analyzer/Scalar/VirtualExact/Native/IntegerElement.template"
+#include "Analyzer/Scalar/VirtualExact/Native/FloatElement.template"
+#include "Analyzer/Scalar/VirtualExact/TopElement.template"
+
+#endif // Analyzer_Scalar_VirtualExact_NativeVirtualExactTEMPLATE
+
+

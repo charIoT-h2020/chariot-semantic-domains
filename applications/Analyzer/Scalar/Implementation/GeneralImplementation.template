@@ -1,0 +1,20 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements
+// File      : GeneralImplementation.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of the general implementation of scalars.
+//
+
+#ifndef Analyzer_Scalar_Implementation_GeneralImplementationTEMPLATE
+#define Analyzer_Scalar_Implementation_GeneralImplementationTEMPLATE
+
+#include "Analyzer/Scalar/Implementation/General/MultiBitElement.template"
+#include "Analyzer/Scalar/Implementation/General/MultiFloatElement.template"
+
+#endif // Analyzer_Scalar_Implementation_GeneralImplementationTEMPLATE
+

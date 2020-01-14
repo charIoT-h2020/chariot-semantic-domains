@@ -1,0 +1,43 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : SimpleMethodTable.inch
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Definition of virtual method tables for integer operations to be
+//     used by the compilation constants and by the scalar elements in
+//     simulation/symbolic execution.
+//
+
+/* DefineTypeObject                 : Type of the element                           */
+
+typedef bool (thisType::*PointerApplyMethod)(const Operation&, EvaluationEnvironment&);
+
+class DecisionNode : public PNT::DecisionNode<PointerApplyMethod> {
+  private:
+   typedef PNT::DecisionNode<PointerApplyMethod> inherited;
+
+  protected:
+   friend class MethodApplyTable;
+
+  public:
+   DecisionNode() {}
+   DecisionNode(PointerApplyMethod method) : inherited(method) {}
+
+   bool execute(thisType& object, const Operation& operation, EvaluationEnvironment& env) const
+      {  return (inherited::hasMethod()) ? (object.*inherited::getMethod())(operation, env) : false; }
+};
+
+class MethodApplyTable : public PNT::ConstMethodTable<DecisionNode, Operation::EndOfType> {
+  private:
+   typedef PNT::ConstMethodTable<DecisionNode, Operation::EndOfType> inherited;
+
+  public:
+   MethodApplyTable();
+   MethodApplyTable(const MethodApplyTable& source) = default;
+   DefineCopy(MethodApplyTable)
+};
+

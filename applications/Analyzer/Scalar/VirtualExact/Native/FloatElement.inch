@@ -1,0 +1,103 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : FloatElement.inch
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Definition of floating-point classes that are very helpful to define
+//     the compilation constants and the scalar elements used in
+//     simulation/symbolic execution.
+//   All this stuff is rather defined for source code analysis.
+//
+
+/* DefineTypeObject                  : Type of the element                                   */
+/* DefineTypeInheritedImplementation : Type of the inherited implementation                  */
+/* DefineIncludeFloatOperation       : Defined iff the operations of math.h are available    */
+
+template <class TypeBase>
+class DefineTypeObject : public TypeBase, private DefineTypeInheritedImplementation {
+  private:
+   typedef DefineTypeObject<TypeBase> thisType;
+   typedef DefineTypeInheritedImplementation inheritedImplementation;
+   typedef TypeBase inherited;
+
+   class MethodApplyTable;
+   #include "Analyzer/Scalar/VirtualExact/Native/FloatMethodTable.inch"
+
+   static MethodApplyTable matMethodTable;
+
+  protected:
+   virtual ComparisonResult _compare(const EnhancedObject& asource) const override
+      {  ComparisonResult result = inherited::_compare(asource);
+         return (result == CREqual)
+            ? inheritedImplementation::_compare((const inheritedImplementation&) castFromCopyHandler(asource))
+            : result;
+      }
+  public:
+   DefineTypeObject(const typename TypeBase::Init& init) : inherited(init), inheritedImplementation(0.0)
+      {  if (init.hasInitialValue()) {
+            AssumeCondition(dynamic_cast<const inheritedImplementation*>(&init.getInitialValue()))
+            inheritedImplementation::assign(((const inheritedImplementation&) init.getInitialValue()).getElement());
+         };
+      }
+   DefineTypeObject(const thisType& source) = default;
+   thisType& operator=(const thisType& source) = default;
+   TemplateDefineCopy(DefineTypeObject, TypeBase)
+   DTemplateDefineAssign(DefineTypeObject, TypeBase)
+   DTemplateCompare(DefineTypeObject, TypeBase)
+   StaticInheritConversions(DefineTypeObject, inherited)
+
+   virtual bool isFloat() const override { return true; }
+   const inheritedImplementation& implementation() const { return (const inheritedImplementation&) *this; }
+   virtual bool apply(const VirtualOperation& operation, EvaluationEnvironment& env) override
+      {  if (!TypeBase::apply(operation, env)
+            && !matMethodTable[((const Scalar::Floating::Operation&) operation).getType()].execute(*this,
+               (const Scalar::Floating::Operation&) operation, env))
+            { AssumeUncalled }
+         return true;
+      }
+
+   virtual typename inherited::ZeroResult queryZeroResult() const override
+      {  return typename inherited::ZeroResult().setBool(inheritedImplementation::getElement()); }
+   virtual int _getSizeInBits() const override
+      { return sizeof(typename inheritedImplementation::SimulatedType)*8; }
+
+   #include "Analyzer/Scalar/VirtualExact/Native/CastInteger.inch"
+
+   DefineDeclareBinaryMethod(PlusAssign)
+   DefineDeclareBinaryMethod(MinusAssign)
+   DefineDeclareBinaryMethod(TimesAssign)
+   DefineDeclareBinaryMethod(DivideAssign)
+   DefineDeclareUnaryMethod(OppositeAssign)
+   DefineDeclareUnaryMethod(AbsAssign)
+
+#ifdef DefineIncludeFloatOperation
+
+   DefineDeclareUnaryMethod(Acos)
+   DefineDeclareUnaryMethod(Asin)
+   DefineDeclareUnaryMethod(Atan)
+   DefineDeclareBinaryMethod(Atan2)
+   DefineDeclareUnaryMethod(Ceil)
+   DefineDeclareUnaryMethod(Cos)
+   DefineDeclareUnaryMethod(Cosh)
+   DefineDeclareUnaryMethod(Exp)
+   DefineDeclareUnaryMethod(Fabs)
+   DefineDeclareUnaryMethod(Floor)
+   DefineDeclareBinaryMethod(Fmod)
+   DefineDeclareOBinaryMethod(Ldexp, Int)
+   DefineDeclareUnaryMethod(Log)
+   DefineDeclareUnaryMethod(Log10)
+   DefineDeclareBinaryMethod(Pow)
+   DefineDeclareUnaryMethod(Sin)
+   DefineDeclareUnaryMethod(Sinh)
+   DefineDeclareUnaryMethod(Sqrt)
+   DefineDeclareUnaryMethod(Tan)
+   DefineDeclareUnaryMethod(Tanh)
+
+#undef Typename
+
+#endif // DefineIncludeFloatOperation
+};

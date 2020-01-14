@@ -1,0 +1,1400 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : approximate native scalar elements
+// File      : ConstantNativeElement.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of a class of elements that rely on native host implementation.
+//   This introduces template classes that close the integer and floating point classes.
+//   All this stuff is rather defined for source code analysis.
+//
+
+#ifndef Analyzer_Scalar_Approximate_ConstantNativeElementTEMPLATE
+#define Analyzer_Scalar_Approximate_ConstantNativeElementTEMPLATE
+
+#include "Analyzer/Scalar/Approximate/Top.h"
+
+namespace Analyzer {}
+
+#include "Analyzer/Scalar/Implementation/General/MultiFloatElement.h"
+#include "Analyzer/Scalar/Approximate/MethodTable.template"
+#include "Analyzer/Scalar/Approximate/Native/ConstantIntegerElement.template"
+#include "Analyzer/Scalar/Approximate/Native/ConstantFloatElement.template"
+
+namespace Analyzer { namespace Scalar { namespace Approximate {
+
+#ifdef _MSC_VER
+#pragma warning(disable : 4244)
+#endif
+
+namespace Details {
+
+template <class TypeRingTraits>
+bool
+TTopCast<TypeRingTraits>::applyTo(const VirtualElement& topElement, VirtualElement& thisElement, const VirtualOperation& operation, EvaluationEnvironment& env) {
+   return false;
+}
+
+template <class TypeRingTraits>
+bool
+TTopCast<TypeRingTraits>::applyToFloatingTop(const VirtualElement& topElement, VirtualElement& thisElement, const VirtualOperation& operation, EvaluationEnvironment& env) {
+   typedef Floating::Operation Operation;
+   auto type = ((const Operation&) operation).getType();
+   if ((type >= Operation::StartOfCompare) && (type < Operation::EndOfCompare)) {
+      env.presult() = Bit::Approximate::Details::BitElement::Methods::newTop(*PPVirtualElement(TypeRingTraits
+         ::createBitElement(VirtualElement::Init()), PNT::Pointer::Init()));
+      return true;
+   };
+   return false;
+}
+
+template <class TypeRingTraits>
+bool
+TTopCast<TypeRingTraits>::applyIntegerTop(VirtualElement& topElement, const VirtualOperation& aoperation, EvaluationEnvironment& env) {
+   typedef Integer::Operation Operation;
+   typedef Details::IntOperationElement::Methods Methods;
+   AssumeCondition(dynamic_cast<const Top*>(&topElement))
+   const auto& operation = (const Operation&) aoperation;
+
+   auto type = operation.getType();
+   if ((type >= Operation::TCastChar) && (type < Operation::EndOfCast)) {
+      switch (type) {
+         case Operation::TCastChar:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createCharElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastSignedChar:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createSignedCharElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastUnsignedChar:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createUnsignedCharElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastShort:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createShortElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastUnsignedShort:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createUnsignedShortElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastInt:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createIntElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastUnsignedInt:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createUnsignedIntElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastLong:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createLongElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastUnsignedLong:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createUnsignedLongElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastFloat:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createFloatElement(VirtualElement::InitFloat()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastDouble:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createDoubleElement(VirtualElement::InitFloat()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastLongDouble:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createLongDoubleElement(VirtualElement::InitFloat()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastMultiBit:
+            AssumeCondition(dynamic_cast<const DInt::TCastMultiBitOperation<Operation>*>(&operation))
+            env.presult() = Methods::newTop(*Methods::newMultiBitConstant(topElement,
+               VirtualElement::Init().setBitSize(((const DInt::TCastMultiBitOperation<Operation>&) operation).getResultSize())));
+            break;
+         case Operation::TCastBit:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createBitElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         default:
+            AssumeUncalled
+      };
+      return true;
+   }
+   else if (((type >= Operation::StartOfCompare) && (type < Operation::EndOfCompare))
+         || ((type >= Operation::TLogicalAndAssign) && (type < Operation::TLogicalNegateAssign))) {
+      env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+         ::createIntElement(VirtualElement::Init()), PNT::Pointer::Init()));
+      return true;
+   };
+   return false;
+}
+
+template <class TypeRingTraits>
+bool
+TTopCast<TypeRingTraits>::constraintIntegerTop(VirtualElement& topElement, const VirtualOperation& aoperation,
+      const VirtualElement& result, ConstraintEnvironment& env) {
+   // typedef Integer::Operation Operation;
+   // typedef Details::IntOperationElement::Methods Methods;
+   AssumeCondition(dynamic_cast<const Top*>(&topElement))
+   // const Operation& operation = (const Operation&) aoperation;
+
+   // AssumeUnimplemented
+   return false;
+}
+
+template <class TypeRingTraits>
+bool
+TTopCast<TypeRingTraits>::applyFloatingTop(VirtualElement& topElement, const VirtualOperation& aoperation, EvaluationEnvironment& env) {
+   typedef Floating::Operation Operation;
+   typedef Details::RealOperationElement::Methods Methods;
+   AssumeCondition(dynamic_cast<const Top*>(&topElement))
+   const auto& operation = (const Operation&) aoperation;
+
+   auto type = operation.getType();
+   if ((type >= Operation::TCastChar) && (type < Operation::EndOfCast)) {
+      switch (type) {
+         case Operation::TCastChar:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createCharElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastSignedChar:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createSignedCharElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastUnsignedChar:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createUnsignedCharElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastShort:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createShortElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastUnsignedShort:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createUnsignedShortElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastInt:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createIntElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastUnsignedInt:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createUnsignedIntElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastLong:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createLongElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastUnsignedLong:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createUnsignedLongElement(VirtualElement::Init()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastFloat:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createFloatElement(VirtualElement::InitFloat()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastDouble:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createDoubleElement(VirtualElement::InitFloat()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastLongDouble:
+            env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createLongDoubleElement(VirtualElement::InitFloat()), PNT::Pointer::Init()));
+            break;
+         case Operation::TCastMultiFloat:
+            AssumeCondition(dynamic_cast<const DReal::TCastMultiFloatOperation<Operation>*>(&operation))
+            {  const DReal::TCastMultiFloatOperation<Operation>& soperation = (const DReal::TCastMultiFloatOperation<Operation>&) operation;
+               env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+                  ::createMultiFloatElement(VirtualElement::InitFloat()
+                     .setSizeMantissa(soperation.getSizeMantissa()).setSizeExponent(soperation.getSizeExponent())), PNT::Pointer::Init()));
+            };
+            break;
+         case Operation::TCastMultiBit: case Operation::TCastMultiBitPointer:
+            AssumeCondition(dynamic_cast<const DInt::TCastMultiBitOperation<Operation>*>(&operation))
+            env.presult() = Details::IntOperationElement::Methods::newTop(*Methods::newMultiBitConstant(topElement, VirtualElement
+               ::Init().setBitSize(((const DInt::TCastMultiBitOperation<Operation>&) operation).getResultSize())));
+            break;
+         default:
+            AssumeUncalled
+      };
+      return true;
+   }
+   else if (type >= Operation::StartOfQuery && type < Operation::EndOfQuery) {
+      if (type < Operation::TCastMantissa) {
+         env.presult() = Bit::Approximate::Details::BitElement::Methods::newTop(*PPVirtualElement(TypeRingTraits
+            ::createBitElement(VirtualElement::Init()), PNT::Pointer::Init()));
+         return true;
+      }
+      else if (type == Operation::TCastMantissa) {
+         env.presult() = Methods::newTop(*PPVirtualElement(TypeRingTraits
+            ::createMultiBitElement(VirtualElement::Init().setBitSize(Methods::querySizeMantissa(topElement))), PNT::Pointer::Init()));
+         return true;
+      };
+      return false;
+   }
+   else if (type >= Operation::EndOfNumeric) {
+      switch (type) {
+         case Operation::TFrexp:
+            AssumeCondition(env.doesControlArgs())
+            env.absorbFirstArgument(Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createIntElement(VirtualElement::Init()), PNT::Pointer::Init())).extractElement());
+            return true;
+         case Operation::TModf:
+            AssumeCondition(env.doesControlArgs())
+            env.absorbFirstArgument(Methods::newTop(*PPVirtualElement(TypeRingTraits
+               ::createDoubleElement(VirtualElement::InitFloat()), PNT::Pointer::Init())).extractElement());
+            return true;
+         default:
+            return false;
+      };
+   }
+   else if ((type >= Operation::StartOfCompare) && (type < Operation::EndOfCompare)) {
+      env.presult() = Bit::Approximate::Details::BitElement::Methods::newTop(*PPVirtualElement(TypeRingTraits
+         ::createBitElement(VirtualElement::Init()), PNT::Pointer::Init()));
+      return true;
+   };
+   return false;
+}
+   
+template <class TypeRingTraits>
+bool
+TTopCast<TypeRingTraits>::constraintFloatingTop(VirtualElement& topElement, const VirtualOperation& aoperation,
+      const VirtualElement& result, ConstraintEnvironment& env) {
+   // typedef Scalar::Floating::Operation Operation;
+   // typedef Details::RealOperationElement::Methods Methods;
+   AssumeCondition(dynamic_cast<const Top*>(&topElement))
+   // const Operation& operation = (const Operation&) aoperation;
+   // AssumeUnimplemented
+   return false;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::queryBound(const typename TypeBase::QueryOperation&, typename TypeBase::QueryOperation::Environment& env) const {
+   auto& result = (typename TypeBase::BoundDomainEnvironment&) env;
+   if (result.doesRequireLower())
+      result.setLower(*this);
+   if (result.doesRequireUpper())
+      result.setUpper(*this);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::applyMinAssign(const VirtualOperation&, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const TypeBase*>(&env.getFirstArgument()))
+   const auto& source = (const TypeBase&) env.getFirstArgument();
+   ComparisonResult result = inherited::compare(source);
+   if (result == CRGreater)
+      env.setResult(source);
+   else if (result == CRNonComparable) {
+      // AssumeCondition(dynamic_cast<Approximate::Details::RealOperationElement*>(this))
+      // env.setSureNaN();
+      env.setEmpty();
+      return false;
+   };
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::applyMaxAssign(const VirtualOperation&, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const TypeBase*>(&env.getFirstArgument()))
+   const auto& source = (const TypeBase&) env.getFirstArgument();
+   ComparisonResult result = inherited::compare(source);
+   if (result == CRLess)
+      env.setResult(source);
+   else if (result == CRNonComparable) {
+      // AssumeCondition(dynamic_cast<Approximate::Details::RealOperationElement*>(this))
+      // env.setSureNaN();
+      env.setEmpty();
+      return false;
+   };
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintCompareLessOrGreater(const VirtualOperation& operation,
+      VirtualElement& source, ConstraintEnvironment::Argument arg, ConstraintEnvironment& env) {
+   bool isLess = (((const typename TypeBase::Operation&) operation).getType() == TypeBase::Operation::TCompareLess)
+      ?  arg.isResult() : arg.isFst();
+   IntersectEnvironment intersectEnv(env, arg.queryInverse());
+   typename TypeBase::Interval::Init init;
+   init.setBitSize(inherited::getSizeInBits());
+   typename TypeBase::Interval interval(isLess
+         ? init.setGreaterThan(*this) : init.setLessThan(*this));
+   if (interval.isValid())
+      source.intersectWith(interval, intersectEnv);
+   else
+      intersectEnv.setEmpty();
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase,TypeDerived>::constraintCompareLessOrEqualOrGreater(const VirtualOperation& operation,
+      VirtualElement& source, ConstraintEnvironment::Argument arg, ConstraintEnvironment& env) {
+   bool isLess = (((const typename TypeBase::Operation&) operation).getType() == TypeBase::Operation::TCompareLessOrEqual)
+      ?  arg.isResult() : arg.isFst();
+   IntersectEnvironment intersectEnv(env, arg.queryInverse());
+   typename TypeBase::Interval::Init init;
+   init.setBitSize(inherited::getSizeInBits());
+   source.intersectWith(typename TypeBase::Interval(isLess
+      ?  init.setGreaterOrEqualThan(*this) : init.setLessOrEqualThan(*this)), intersectEnv);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintCompareEqual(const VirtualOperation&, VirtualElement& source,
+      ConstraintEnvironment::Argument arg, ConstraintEnvironment& env) {
+   IntersectEnvironment intersectEnv(env, arg.queryInverse());
+   source.intersectWith(*this, intersectEnv);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintCompareDifferent(const VirtualOperation&, VirtualElement& source,
+      ConstraintEnvironment::Argument arg, ConstraintEnvironment& env) {
+   auto kind = env.getInformationKind();
+   IntersectEnvironment intersectEnv(env, arg.queryInverse());
+   PPVirtualElement constraint;
+   PNT::TPassPointer<typename TypeBase::Interval, PPAbstractElement>
+      lessInterval(new typename TypeBase::Interval(typename TypeBase::Interval
+         ::Init().setBitSize(inherited::getSizeInBits()).setLessThan(*this)), PNT::Pointer::Init()),
+      greaterInterval(new typename TypeBase::Interval(typename TypeBase::Interval
+         ::Init().setBitSize(inherited::getSizeInBits()).setGreaterThan(*this)), PNT::Pointer::Init());
+   if (lessInterval->isValid()) {
+      if (greaterInterval->isValid()) {
+         PNT::TPassPointer<Disjunction, PPAbstractElement> disjunctionConstraint = VirtualElement::Methods::newDisjunction(*this);
+         // PNT::TPassPointer<Disjunction, PPAbstractElement> disjunctionConstraint(new Disjunction(
+         //    Disjunction::Init().setBitSize(inherited::getSizeInBits()).setTable(*this)), PNT::Pointer::Init());
+         disjunctionConstraint->add(lessInterval, kind);
+         disjunctionConstraint->add(greaterInterval, kind);
+         constraint = disjunctionConstraint;
+      }
+      else
+         constraint = lessInterval;
+   }
+   else if (greaterInterval->isValid())
+      constraint = greaterInterval;
+   if (!constraint.isValid())
+      env.setEmpty();
+   else
+      source.intersectWith(*constraint, intersectEnv);
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintMinAssignWithConstantResult(const VirtualOperation&, VirtualElement& sourceElement,
+      const VirtualElement& resultElement, ConstraintEnvironment::Argument arg, ConstraintEnvironment& env) {
+   AssumeCondition(dynamic_cast<const TypeBase*>(&resultElement))
+   const TypeBase& result = (const TypeBase&) resultElement;
+   ComparisonResult comparisonResult = inherited::compare(result);
+   if (comparisonResult == CRGreater) {
+      IntersectEnvironment intersectEnv(env, arg.queryInverse());
+      sourceElement.intersectWith(result, intersectEnv);
+   }
+   else if (comparisonResult == CREqual) {
+      IntersectEnvironment intersectEnv(env, arg.queryInverse());
+      sourceElement.intersectWith(typename TypeBase::Interval(typename TypeBase::Interval
+         ::Init().setBitSize(inherited::getSizeInBits()).setGreaterOrEqualThan(result)), intersectEnv);
+   }
+   else {
+      AssumeCondition(comparisonResult == CRLess)
+      env.setEmpty();
+   };
+   if (env.doesStopErrorStates() && env.hasEvaluationError())
+      env.setEmpty();
+   return true;
+}
+
+template <class TypeBase, class TypeDerived>
+bool
+TBaseElement<TypeBase, TypeDerived>::constraintMaxAssignWithConstantResult(const VirtualOperation&, VirtualElement& sourceElement,
+      const VirtualElement& resultElement, ConstraintEnvironment::Argument arg, ConstraintEnvironment& env) {
+   AssumeCondition(dynamic_cast<const TypeBase*>(&resultElement))
+   const TypeBase& result = (const TypeBase&) resultElement;
+   ComparisonResult comparisonResult = inherited::compare(result);
+   if (comparisonResult == CRLess) {
+      IntersectEnvironment intersectEnv(env, arg.queryInverse());
+      sourceElement.intersectWith(result, intersectEnv);
+   }
+   else if (comparisonResult == CREqual) {
+      IntersectEnvironment intersectEnv(env, arg.queryInverse());
+      sourceElement.intersectWith(typename TypeBase::Interval(typename TypeBase::Interval
+         ::Init().setBitSize(inherited::getSizeInBits()).setLessOrEqualThan(result)), intersectEnv);
+   }
+   else {
+      AssumeCondition(comparisonResult == CRGreater)
+      env.setEmpty();
+   };
+   if (env.doesStopErrorStates() && env.hasEvaluationError())
+      env.setEmpty();
+   return true;
+}
+
+template <class TypeBase>
+TCloseCastElement<TypeBase>::MethodConstraintTable::MethodConstraintTable() {
+#include "StandardClasses/UndefineNew.h"
+#define DefineInitConstraintCompareMethodTable(TypeOperation)                                     \
+   inherited::mcctCompareTable.elementAt(TypeBase::Operation::T##TypeOperation).setMethod(&TCloseCastElement<TypeBase>::constraint##TypeOperation);
+#define DefineInitConstraintCompareOMethodTable(TypeOperation, TypeMethod)                        \
+   inherited::mcctCompareTable.elementAt(TypeBase::Operation::T##TypeOperation).setMethod(&TCloseCastElement<TypeBase>::constraint##TypeMethod);
+#define DefineInitConstraintBinaryMethodTable(TypeOperation)                                      \
+   inherited::mcbtBinaryTable.elementAt(TypeBase::Operation::T##TypeOperation).setArray(          \
+      new GenericAndConstantResultBinaryConstraintMethod<DomainTraits>(&TypeBase::constraint##TypeOperation, \
+      &TCloseCastElement<TypeBase>::constraint##TypeOperation##WithConstantResult));
+
+   DefineInitConstraintCompareOMethodTable(CompareLess, CompareLessOrGreater)
+   DefineInitConstraintCompareOMethodTable(CompareLessOrEqual, CompareLessOrEqualOrGreater)
+   DefineInitConstraintCompareMethodTable(CompareEqual)
+   DefineInitConstraintCompareMethodTable(CompareDifferent)
+   DefineInitConstraintCompareOMethodTable(CompareGreaterOrEqual, CompareLessOrEqualOrGreater)
+   DefineInitConstraintCompareOMethodTable(CompareGreater, CompareLessOrGreater)
+
+   DefineInitConstraintBinaryMethodTable(MinAssign)
+   DefineInitConstraintBinaryMethodTable(MaxAssign)
+
+#undef DefineInitConstraintBinaryMethodTable
+#undef DefineInitConstraintCompareMethodTable
+#undef DefineInitConstraintCompareOMethodTable
+#include "StandardClasses/DefineNew.h"
+}
+
+template <class TypeBase>
+typename TCloseCastElement<TypeBase>::MethodConstraintTable TCloseCastElement<TypeBase>::mctMethodConstraintTable;
+
+template <class TypeBase>
+bool
+TCloseCastElement<TypeBase>::intersectWithTo(Approximate::VirtualElement& source, EvaluationEnvironment& env) const {
+   return Details::MethodAccess<DomainTraits>::intersectWithTo(*this, source, env);
+}
+
+template <class TypeBase>
+bool
+TCloseCastElement<TypeBase>::constraintTo(const VirtualOperation& operation,
+   Approximate::VirtualElement& source, const Approximate::VirtualElement& result, ConstraintEnvironment& env) {
+   return Details::MethodAccess<DomainTraits>::constraintTo(*this,
+      (const typename inherited::Operation&) operation, source, result, env);
+}
+
+template <class TypeBase>
+bool
+TCloseCastElement<TypeBase>::contain(const Scalar::VirtualElement& source, Scalar::EvaluationEnvironment& env) const {
+   return inherited::contain(source, env) ? true
+      :  Details::MethodAccess<DomainTraits>::containConstant(*this, (const VirtualElement&) source, (EvaluationEnvironment&) env);
+}
+
+template <class TypeBase>
+bool
+TCloseCastElement<TypeBase>::intersectWith(const Approximate::VirtualElement& source, EvaluationEnvironment& env) {
+   if (source.getType().isConstant())
+      return Details::MethodAccess<DomainTraits>::intersectWithConstant(*this, source, env);
+   else {
+      inherited::assume(source.contain(*this, env));
+      if (env.isNoneApplied())
+         env.setEmpty();
+      else if (env.isPartialApplied())
+         return source.intersectWithTo(*this, env);
+   };
+   return true;
+}
+
+template <class TypeBase>
+bool
+TCloseCastElement<TypeBase>::constraint(const VirtualOperation& operation,
+      const Approximate::VirtualElement& result, ConstraintEnvironment& env) {
+   return inherited::constraint(operation, result, env) ? true
+      :  Details::MethodAccess<DomainTraits>::constraintConstant(*this,
+            (const typename inherited::Operation&) operation, result, env);
+}
+
+/* Implementation of the template class TCloseCastIntegerBasedElement */
+
+template <class TypeBased, class TypeRingTraits>
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::MethodApplyTable::MethodApplyTable() {
+#include "StandardClasses/UndefineNew.h"
+#define DefineInitMethodTable(TypeOperation)                                                      \
+   inherited::elementAt(Integer::Operation::T##TypeOperation).setMethod(&TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::apply##TypeOperation);
+#define DefineInitOMethodTable(TypeOperation, TypeMethod)                                         \
+   inherited::elementAt(Integer::Operation::T##TypeOperation).setMethod(&TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::apply##TypeMethod);
+
+   DefineInitMethodTable(CastChar)
+   DefineInitMethodTable(CastSignedChar)
+   DefineInitMethodTable(CastUnsignedChar)
+   DefineInitMethodTable(CastShort)
+   DefineInitMethodTable(CastUnsignedShort)
+   DefineInitMethodTable(CastInt)
+   DefineInitMethodTable(CastUnsignedInt)
+   DefineInitMethodTable(CastLong)
+   DefineInitMethodTable(CastUnsignedLong)
+   DefineInitMethodTable(CastFloat)
+   DefineInitMethodTable(CastDouble)
+   DefineInitMethodTable(CastLongDouble)
+   DefineInitMethodTable(CastMultiBit)
+   DefineInitMethodTable(CastBit)
+
+   DefineInitOMethodTable(CompareLess, Compare)
+   DefineInitOMethodTable(CompareLessOrEqual, Compare)
+   DefineInitOMethodTable(CompareEqual, Compare)
+   DefineInitOMethodTable(CompareDifferent, Compare)
+   DefineInitOMethodTable(CompareGreaterOrEqual, Compare)
+   DefineInitOMethodTable(CompareGreater, Compare)
+
+   DefineInitMethodTable(MinAssign)
+   DefineInitMethodTable(MaxAssign)
+
+#undef DefineInitOMethodTable
+#undef DefineInitMethodTable
+#include "StandardClasses/DefineNew.h"
+}
+
+template <class TypeBased, class TypeRingTraits>
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::MethodQueryTable::MethodQueryTable() {
+#include "StandardClasses/UndefineNew.h"
+   VirtualElement::FunctionQueryTable* functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TDomain).absorbFunctionTable(functionTable);
+   functionTable->setSize(QueryOperation::EndOfTypeDomain);
+
+#define DefineInitQueryMethodTable(TypeOperation)                                               \
+   (*functionTable)[QueryOperation::TD##TypeOperation].setMethod(&TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNew##TypeOperation);
+
+#define DefineInitQueryOMethodTable(TypeOperation, TypeMethod)                                  \
+   (*functionTable)[QueryOperation::TD##TypeOperation].setMethod(&TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNew##TypeMethod);
+   
+   DefineInitQueryMethodTable(Disjunction)
+   DefineInitQueryMethodTable(MultiBitConstant)
+   DefineInitQueryMethodTable(MultiFloatConstant)
+   DefineInitQueryMethodTable(Interval)
+   DefineInitQueryMethodTable(BooleanDisjunction)
+   DefineInitQueryMethodTable(Top)
+   DefineInitQueryMethodTable(False)
+   DefineInitQueryMethodTable(True)
+   DefineInitQueryMethodTable(IntForShift)
+   DefineInitQueryMethodTable(Constant)
+   DefineInitQueryMethodTable(Zero)
+   DefineInitQueryMethodTable(MinusOne)
+   DefineInitQueryMethodTable(One)
+   DefineInitQueryMethodTable(Min)
+   DefineInitQueryOMethodTable(MinSigned, Min)
+   DefineInitQueryOMethodTable(MinUnsigned, Min)
+   DefineInitQueryMethodTable(Max)
+   DefineInitQueryOMethodTable(MaxSigned, Max)
+   DefineInitQueryOMethodTable(MaxUnsigned, Max)
+
+#undef DefineInitQueryMethodTable
+#undef DefineInitQueryOMethodTable
+#include "StandardClasses/DefineNew.h"
+}
+
+template <class TypeBased, class TypeRingTraits>
+typename TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::MethodApplyTable TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::matMethodApplyTable;
+
+template <class TypeBased, class TypeRingTraits>
+typename TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::MethodQueryTable TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::mqtMethodQueryTable;
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::CharElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.getImplementation(), env); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::SignedCharElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.getImplementation(), env); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::UnsignedCharElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.getImplementation(), env); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::ShortElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.getImplementation(), env); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::UnsignedShortElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.getImplementation(), env); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::IntElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.getImplementation(), env); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::UnsignedIntElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.getImplementation(), env); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::LongElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.getImplementation(), env); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::UnsignedLongElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.getImplementation(), env); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Floating::Approximate::FloatElement& source, EvaluationEnvironment& env) {
+   inheritedImplementation::assign(inheritedImplementation((typename inherited::SimulatedType)
+      source.getImplementation().getElement()));
+   if (source.getImplementation().getExponent() >= inheritedImplementation::getSize()*8) {
+      if (source.getImplementation().getElement() >= 0)
+         env.setPositiveOverflow().setErrorEmpty();
+      else
+         env.setNegativeOverflow().setErrorEmpty();
+   };
+}
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Floating::Approximate::DoubleElement& source, EvaluationEnvironment& env) {
+   inheritedImplementation::assign(inheritedImplementation((typename inherited::SimulatedType)
+      source.getImplementation().getElement()));
+   if (source.getImplementation().getExponent() >= inheritedImplementation::getSize()*8) {
+      if (source.getImplementation().getElement() >= 0)
+         env.setPositiveOverflow().setErrorEmpty();
+      else
+         env.setNegativeOverflow().setErrorEmpty();
+   };
+}
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Floating::Approximate::LongDoubleElement& source, EvaluationEnvironment& env) {
+   inheritedImplementation::assign(inheritedImplementation((typename inherited::SimulatedType)
+      source.getImplementation().getElement()));
+   if (source.getImplementation().getExponent() >= inheritedImplementation::getSize()*8) {
+      if (source.getImplementation().getElement() >= 0)
+         env.setPositiveOverflow().setErrorEmpty();
+      else
+         env.setNegativeOverflow().setErrorEmpty();
+   };
+}
+
+#define DefineApplyCastIntImplementation(TypeKind)                                               \
+template <class TypeBased, class TypeRingTraits>                                                 \
+bool                                                                                             \
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::applyCast##TypeKind(const VirtualOperation& operation, EvaluationEnvironment& env) {\
+   typedef Integer::Approximate::TypeKind##Element CastResult;                                   \
+   PPVirtualElement result(TypeRingTraits::create##TypeKind##Element(VirtualElement::Init()), PNT::Pointer::Init());\
+   ((CastResult&) *result).castAssign(*this, env);                                               \
+   env.presult() = result;                                                                       \
+   return true;                                                                                  \
+}
+
+#define DefineApplyCastFloatImplementation(TypeKind)                                             \
+template <class TypeBased, class TypeRingTraits>                                                 \
+bool                                                                                             \
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::applyCast##TypeKind(const VirtualOperation& operation, EvaluationEnvironment& env) {\
+   typedef Floating::Approximate::TypeKind##Element CastResult;                                  \
+   PPVirtualElement result(TypeRingTraits::create##TypeKind##Element(VirtualElement::InitFloat()), PNT::Pointer::Init());\
+   ((CastResult&) *result).castAssign(*this, env);                                               \
+   env.presult() = result;                                                                       \
+   return true;                                                                                  \
+}
+
+DefineApplyCastIntImplementation(Char)
+DefineApplyCastIntImplementation(SignedChar)
+DefineApplyCastIntImplementation(UnsignedChar)
+DefineApplyCastIntImplementation(Short)
+DefineApplyCastIntImplementation(UnsignedShort)
+DefineApplyCastIntImplementation(Int)
+DefineApplyCastIntImplementation(UnsignedInt)
+DefineApplyCastIntImplementation(Long)
+DefineApplyCastIntImplementation(UnsignedLong)
+DefineApplyCastFloatImplementation(Float)
+DefineApplyCastFloatImplementation(Double)
+DefineApplyCastFloatImplementation(LongDouble)
+
+#undef DefineApplyCastIntImplementation
+#undef DefineApplyCastFloatImplementation
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::applyCastMultiBit(const VirtualOperation& aoperation, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const Integer::CastMultiBitOperation*>(&aoperation))
+   const auto& operation = (const Integer::CastMultiBitOperation&) aoperation;
+   auto value = inheritedImplementation::getElement();
+   bool isNegative = TypeBased::isNegative(value);
+   int size = inheritedImplementation::getSize()*8;
+   if (isNegative)
+      inherited::setToNegative(value);
+   PPVirtualElement result = Methods::newMultiBitConstant(*this, VirtualElement::Init().setBitSize(size)
+         .setInitialValue(Integer::Implementation::UnsignedIntElement((unsigned int) value)));
+   int shift = 0;
+   while ((size -= sizeof(unsigned int)*8) >= 0) {
+      shift += sizeof(unsigned int)*8;
+      int localShift = sizeof(unsigned int)*8;
+      value >>= localShift;
+      PPVirtualElement argument = Methods::newMultiBitConstant(*this, VirtualElement::Init().setBitSize(operation.getResultSize()).setInitialValue(
+            Integer::Implementation::UnsignedIntElement((unsigned int) value)));
+      argument = Methods::applyAssign(argument, MultiBit::LeftShiftAssignOperation(),
+            *Methods::newIntForShift(*this, shift), VirtualElement::EPExactStopErrorStates);
+      env.presult() = Methods::applyAssign(env.presult(), MultiBit::BitOrAssignOperation(),
+            *argument, VirtualElement::EPExactStopErrorStates);
+   };
+   if (isNegative)
+      result = Methods::applyAssign(result, MultiBit::OppositeSignedAssignOperation(), VirtualElement::EPExactStopErrorStates);
+   if (operation.getResultSize() != inheritedImplementation::getSize()*8)
+      result = Methods::applyAssign(result, MultiBit::CastMultiBitOperation()
+         .setSigned(inheritedImplementation::isSigned()).setSize(operation.getResultSize()), env);
+   env.presult() = result;
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::applyCastBit(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   PPVirtualElement result(TypeRingTraits::createBitElement(VirtualElement::Init()), PNT::Pointer::Init());
+   if (inheritedImplementation::getElement() != 0)
+      result = Methods::applyAssign(result, Scalar::Bit::NextAssignOperation(), VirtualElement::EPExactStopErrorStates);
+   env.presult() = result;
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::applyCompare(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   typedef typename inherited::Operation Operation;
+   AssumeCondition(dynamic_cast<const inherited*>(&env.getFirstArgument()))
+   const inherited& source = (const inherited&) env.getFirstArgument();
+   auto type = ((const Operation&) operation).getType();
+   ComparisonResult comparisonResult = inherited::compare(source);
+   bool result = false;
+   if (comparisonResult == CRLess)
+      result = (type <= Operation::TCompareLessOrEqual) || (type == Operation::TCompareDifferent);
+   else if (comparisonResult == CREqual)
+      result = (type == Operation::TCompareLessOrEqual) || (type == Operation::TCompareEqual)
+         || (type == Operation::TCompareGreaterOrEqual);
+   else if (comparisonResult == CRGreater)
+      result = (type >= Operation::TCompareDifferent);
+   env.presult().absorbElement(TypeRingTraits::createIntElement(VirtualElement::Init()
+      .setInitialValue(Scalar::Integer::Implementation::IntElement(result))));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::query(const VirtualQueryOperation& operation, VirtualQueryOperation::Environment& env) const {
+   return inherited::query(operation, env) ? true
+      : Details::MethodAccess<DomainTraits>::query(*this, (const typename TypeBased::QueryOperation&) operation, env);
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::apply(const VirtualOperation& operation, Scalar::EvaluationEnvironment& env) {
+   return inherited::apply(operation, env) ? true
+      : Details::MethodAccess<DomainTraits>::apply(*this, (const typename inherited::Operation&) operation, (EvaluationEnvironment&) env);
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::mergeWith(const Scalar::VirtualElement& source, Scalar::EvaluationEnvironment& env) {
+   if (inherited::mergeWith(source, env))
+      return true;
+   return MethodAccess<DomainTraits>::mergeWithConstantInt(*this, (const VirtualElement&) source, (EvaluationEnvironment&) env);
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewDisjunction(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement thisElement(inherited::createConstantElement(TypeRingTraits(), VirtualElement::Init()), PNT::Pointer::Init());
+   env.presult().absorbElement(new Disjunction(Disjunction::Init().setBitSize(inherited::getSize()*8)
+         .setTable(*thisElement)));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewMultiBitConstant(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(TypeRingTraits::createMultiBitElement(env.init()));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewMultiFloatConstant(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(TypeRingTraits::createMultiFloatElement((const VirtualElement::InitFloat&) env.init()));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewInterval(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   // PPVirtualElement thisElement(inherited::createConstantElement(TypeRingTraits(), VirtualElement::Init()), PNT::Pointer::Init());
+   AssumeCondition(dynamic_cast<const Details::VirtualIntegerInterval::Init*>(&env.init()))
+   auto& intervalInit = (Details::VirtualIntegerInterval::Init&) env.init();
+   env.presult().absorbElement(new Integer::Approximate::Interval(intervalInit));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewBooleanDisjunction(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement thisElement(TypeRingTraits::createIntElement(VirtualElement::Init()), PNT::Pointer::Init());
+   env.presult().absorbElement(new Disjunction(Disjunction::Init().setBitSize(inherited::getSize()*8)
+         .setTable(*thisElement)));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewTop(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement thisElement(inherited::createConstantElement(TypeRingTraits(), VirtualElement::Init()), PNT::Pointer::Init());
+   env.presult().absorbElement(new Top(Top::Init().setBitSize(inherited::getSize()*8)
+         .setTable(*thisElement).setApplyTop(&TTopCast<TypeRingTraits>::applyIntegerTop)
+         .setApplyToTop(&TTopCast<TypeRingTraits>::applyTo)
+         .setConstraintTop(&TTopCast<TypeRingTraits>::constraintIntegerTop)));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewFalse(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(TypeRingTraits::createIntElement(VirtualElement::Init()));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewTrue(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement result(TypeRingTraits::createIntElement(VirtualElement::Init()), PNT::Pointer::Init());
+   env.presult() = Methods::applyAssign(result, Scalar::Integer::NextAssignOperation(), VirtualElement::EPExactStopErrorStates);
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewIntForShift(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (Details::IntOperationElement::IntForShiftEnvironment&) aenv;
+   env.presult().absorbElement(TypeRingTraits::createIntElement(VirtualElement::Init()
+         .setInitialValue(Integer::Implementation::IntElement(env.shift()))));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewConstant(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(inherited::createConstantElement(TypeRingTraits(), env.init()));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewZero(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(inherited::createConstantElement(TypeRingTraits(), VirtualElement::Init()));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewMinusOne(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement thisElement(inherited::createConstantElement(TypeRingTraits(), VirtualElement::Init()), PNT::Pointer::Init());
+   env.presult() = Methods::applyAssign(thisElement, Integer::PrevAssignOperation(), VirtualElement::EPExactStopErrorStates);
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewOne(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(inherited::createConstantElement(TypeRingTraits(), VirtualElement::Init()
+         .setInitialValue(Integer::Implementation::IntElement(1))));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewMin(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(inherited::createConstantElement(TypeRingTraits(), VirtualElement::Init()
+         .setInitialValue(Integer::Implementation::IntElement(inheritedImplementation::getMin()))));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastIntegerBasedElement<TypeBased, TypeRingTraits>::queryNewMax(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(inherited::createConstantElement(TypeRingTraits(), VirtualElement::Init()
+         .setInitialValue(Integer::Implementation::IntElement(inheritedImplementation::getMax()))));
+   return true;
+}
+
+/* Implementation of the template class TCloseCastFloatingBasedElement */
+
+template <class TypeBased, class TypeRingTraits>
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::MethodApplyTable::MethodApplyTable() {
+#include "StandardClasses/UndefineNew.h"
+#define DefineInitMethodTable(TypeOperation)                                                      \
+   inherited::elementAt(Scalar::Floating::Operation::T##TypeOperation).setMethod(&TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::apply##TypeOperation);
+#define DefineInitOMethodTable(TypeOperation, TypeMethod)                                         \
+   inherited::elementAt(Scalar::Floating::Operation::T##TypeOperation).setMethod(&TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::apply##TypeMethod);
+
+   DefineInitMethodTable(CastChar)
+   DefineInitMethodTable(CastSignedChar)
+   DefineInitMethodTable(CastUnsignedChar)
+   DefineInitMethodTable(CastShort)
+   DefineInitMethodTable(CastUnsignedShort)
+   DefineInitMethodTable(CastInt)
+   DefineInitMethodTable(CastUnsignedInt)
+   DefineInitMethodTable(CastLong)
+   DefineInitMethodTable(CastUnsignedLong)
+   DefineInitMethodTable(CastFloat)
+   DefineInitMethodTable(CastDouble)
+   DefineInitMethodTable(CastLongDouble)
+
+   DefineInitMethodTable(CastMultiFloat)
+   DefineInitOMethodTable(CastRational, CastViaMultiFloat)
+   DefineInitOMethodTable(CastMultiBit, CastViaMultiFloat)
+   DefineInitOMethodTable(CastMultiBitPointer, CastViaMultiFloat)
+
+   DefineInitOMethodTable(CompareLess, Compare)
+   DefineInitOMethodTable(CompareLessOrEqual, Compare)
+   DefineInitOMethodTable(CompareEqual, Compare)
+   DefineInitOMethodTable(CompareDifferent, Compare)
+   DefineInitOMethodTable(CompareGreaterOrEqual, Compare)
+   DefineInitOMethodTable(CompareGreater, Compare)
+
+   DefineInitMethodTable(MinAssign)
+   DefineInitMethodTable(MaxAssign)
+
+#undef DefineInitOMethodTable
+#undef DefineInitMethodTable
+#include "StandardClasses/DefineNew.h"
+}
+
+template <class TypeBased, class TypeRingTraits>
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::MethodQueryTable::MethodQueryTable() {
+#include "StandardClasses/UndefineNew.h"
+
+   VirtualElement::FunctionQueryTable* functionTable = new VirtualElement::FunctionQueryTable();
+   inherited::elementAt(VirtualQueryOperation::TDomain).absorbFunctionTable(functionTable);
+   functionTable->setSize(QueryOperation::EndOfTypeDomain);
+
+#define DefineInitQueryMethodTable(TypeOperation)                                            \
+   (*functionTable)[QueryOperation::TD##TypeOperation].setMethod(&TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::queryNew##TypeOperation);
+   
+   DefineInitQueryMethodTable(Disjunction)
+   DefineInitQueryMethodTable(BooleanDisjunction)
+   DefineInitQueryMethodTable(MultiBitConstant)
+   DefineInitQueryMethodTable(MultiFloatConstant)
+   DefineInitQueryMethodTable(Interval)
+   DefineInitQueryMethodTable(Top)
+   DefineInitQueryMethodTable(Zero)
+   DefineInitQueryMethodTable(Min)
+   DefineInitQueryMethodTable(Max)
+   DefineInitQueryMethodTable(True)
+   DefineInitQueryMethodTable(False)
+
+#undef DefineInitQueryMethodTable
+
+#include "StandardClasses/DefineNew.h"
+}
+
+template <class TypeBased, class TypeRingTraits>
+typename TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::MethodApplyTable TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::matMethodApplyTable;
+
+template <class TypeBased, class TypeRingTraits>
+typename TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::MethodQueryTable TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::mqtMethodQueryTable;
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::CharElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign((typename inherited::SimulatedType) source.getImplementation().getElement()); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::SignedCharElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign((typename inherited::SimulatedType) source.getImplementation().getElement()); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::UnsignedCharElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign((typename inherited::SimulatedType) source.getImplementation().getElement()); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::ShortElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign((typename inherited::SimulatedType) source.getImplementation().getElement()); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::UnsignedShortElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign((typename inherited::SimulatedType) source.getImplementation().getElement()); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::IntElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign((typename inherited::SimulatedType) source.getImplementation().getElement()); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::UnsignedIntElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign((typename inherited::SimulatedType) source.getImplementation().getElement()); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::LongElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign((typename inherited::SimulatedType) source.getImplementation().getElement()); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Integer::Approximate::UnsignedLongElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign((typename inherited::SimulatedType) source.getImplementation().getElement()); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Floating::Approximate::FloatElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.getImplementation(), env); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Floating::Approximate::DoubleElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.getImplementation(), env); }
+
+template <class TypeBased, class TypeRingTraits>
+void
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::_castAssign(const Floating::Approximate::LongDoubleElement& source, EvaluationEnvironment& env)
+   {  inheritedImplementation::assign(source.getImplementation(), env); }
+
+#define DefineApplyCastIntImplementation(TypeKind)                                               \
+template <class TypeBased, class TypeRingTraits>                                                 \
+bool                                                                                             \
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::applyCast##TypeKind(const VirtualOperation& operation, EvaluationEnvironment& env) {\
+   typedef TBaseElement<Integer::Approximate::BaseElement, Integer::Approximate::TypeKind##Element> CastResult;\
+   PPVirtualElement result(TypeRingTraits::create##TypeKind##Element(VirtualElement::Init()), PNT::Pointer::Init());\
+   ((CastResult&) *result).castAssign(*this, env);                                               \
+   env.presult() = result;                                                                       \
+   return true;                                                                                  \
+}
+
+#define DefineApplyCastFloatImplementation(TypeKind)                                             \
+template <class TypeBased, class TypeRingTraits>                                                 \
+bool                                                                                             \
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::applyCast##TypeKind(const VirtualOperation& operation, EvaluationEnvironment& env) {\
+   typedef TBaseElement<Floating::Approximate::BaseElement, Floating::Approximate::TypeKind##Element> CastResult;\
+   PPVirtualElement result(TypeRingTraits::create##TypeKind##Element(VirtualElement::InitFloat()), PNT::Pointer::Init());\
+   ((CastResult&) *result).castAssign(*this, env);                                               \
+   env.presult() = result;                                                                       \
+   return true;                                                                                  \
+}
+
+DefineApplyCastIntImplementation(Char)
+DefineApplyCastIntImplementation(SignedChar)
+DefineApplyCastIntImplementation(UnsignedChar)
+DefineApplyCastIntImplementation(Short)
+DefineApplyCastIntImplementation(UnsignedShort)
+DefineApplyCastIntImplementation(Int)
+DefineApplyCastIntImplementation(UnsignedInt)
+DefineApplyCastIntImplementation(Long)
+DefineApplyCastIntImplementation(UnsignedLong)
+DefineApplyCastFloatImplementation(Float)
+DefineApplyCastFloatImplementation(Double)
+DefineApplyCastFloatImplementation(LongDouble)
+
+#undef DefineApplyCastIntImplementation
+#undef DefineApplyCastFloatImplementation
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::applyCastMultiFloat(
+      const VirtualOperation& aoperation, EvaluationEnvironment& env) {
+   AssumeCondition(dynamic_cast<const Floating::CastMultiFloatOperation*>(&aoperation))
+   const auto& operation = (const Scalar::Floating::CastMultiFloatOperation&) aoperation;
+   typedef typename Numerics::TDoubleElement<Numerics::TFloatingBase<typename inherited::ImplementationTraits> > DoubleElement;
+   typename DoubleElement::BuiltDouble softDouble(DoubleElement(inherited::getImplementation().getElement()));
+   Floating::Implementation::MultiFloatElement
+      init(DoubleElement::UBitSizeMantissa, DoubleElement::UBitSizeExponent);
+   int mantissaByteIndex = (DoubleElement::UBitSizeMantissa + (8*sizeof(unsigned int)-1)) / (8*sizeof(unsigned int));
+   while (mantissaByteIndex >= 0) {
+      init.mantissa()[mantissaByteIndex] = softDouble.getMantissa()[mantissaByteIndex];
+      --mantissaByteIndex;
+   };
+   int exponentByteIndex = (DoubleElement::UBitSizeExponent + (8*sizeof(unsigned int)-1)) / (8*sizeof(unsigned int));
+   while (exponentByteIndex >= 0) {
+      init.exponent()[exponentByteIndex] = softDouble.getBasicExponent()[exponentByteIndex];
+      --exponentByteIndex;
+   };
+   if (softDouble.isNegative())
+      init.setNegative();
+
+   PPVirtualElement result(TypeRingTraits::createMultiFloatElement((VirtualElement::InitFloat&)
+      VirtualElement::InitFloat().setSizeMantissa(DoubleElement::UBitSizeMantissa)
+         .setSizeExponent(DoubleElement::UBitSizeExponent).setInitialValue(init)), PNT::Pointer::Init());
+
+   if ((operation.getSizeMantissa() != DoubleElement::UBitSizeMantissa)
+         || (operation.getSizeExponent() != DoubleElement::UBitSizeExponent))
+      result = Methods::applyAssign(result, operation, env);
+   env.presult() = result;
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::applyCastViaMultiFloat(
+      const VirtualOperation& aoperation, EvaluationEnvironment& env) {
+   typedef typename Numerics::TDoubleElement<Numerics::TFloatingBase<typename inherited::ImplementationTraits> > DoubleElement;
+   typename DoubleElement::BuiltDouble softDouble(DoubleElement(TypeBased::getImplementation().getElement()));
+   Floating::Implementation::MultiFloatElement init(DoubleElement::UBitSizeMantissa,
+         DoubleElement::UBitSizeExponent);
+   int mantissaByteIndex = (DoubleElement::UBitSizeMantissa + (8*sizeof(unsigned int)-1)) / (8*sizeof(unsigned int));
+   while (mantissaByteIndex >= 0) {
+      init.mantissa()[mantissaByteIndex] = softDouble.getMantissa()[mantissaByteIndex];
+      --mantissaByteIndex;
+   };
+   int exponentByteIndex = (DoubleElement::UBitSizeExponent + (8*sizeof(unsigned int)-1)) / (8*sizeof(unsigned int));
+   while (exponentByteIndex >= 0) {
+      init.exponent()[exponentByteIndex] = softDouble.getBasicExponent()[exponentByteIndex];
+      --exponentByteIndex;
+   };
+   if (softDouble.isNegative())
+      init.setNegative();
+
+   PPVirtualElement result(TypeRingTraits::createMultiFloatElement((VirtualElement::InitFloat&)
+      VirtualElement::InitFloat().setSizeMantissa(DoubleElement::UBitSizeMantissa)
+         .setSizeExponent(DoubleElement::UBitSizeExponent).setInitialValue(init)), PNT::Pointer::Init());
+
+   env.presult() = Methods::applyAssign(result, aoperation, env);
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::applyCompare(
+      const VirtualOperation& operation, EvaluationEnvironment& env) {
+   typedef typename inherited::Operation Operation;
+   AssumeCondition(dynamic_cast<const inherited*>(&env.getFirstArgument()))
+   const inherited& source = (const inherited&) env.getFirstArgument();
+   auto type = ((const Operation&) operation).getType();
+   ComparisonResult comparisonResult = inherited::compare((const inherited&) source);
+   bool result = false;
+   if (comparisonResult == CRLess)
+      result = (type <= Operation::TCompareLessOrEqual) || (type <= Operation::TCompareDifferent);
+   else if (comparisonResult == CREqual)
+      result = (type == Operation::TCompareLessOrEqual) || (type == Operation::TCompareEqual)
+         || (type <= Operation::TCompareGreaterOrEqual);
+   else if (comparisonResult == CRGreater)
+      result = (type >= Operation::TCompareDifferent);
+   env.presult().absorbElement(TypeRingTraits::createIntElement(VirtualElement::Init()
+      .setInitialValue(Integer::Implementation::IntElement(result))));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::query(const VirtualQueryOperation& operation, VirtualQueryOperation::Environment& env) const {
+   return inherited::query(operation, env) ? true
+      : Details::MethodAccess<DomainTraits>::query(*this, (const QueryOperation&) operation, env);
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::apply(const VirtualOperation& operation, Scalar::EvaluationEnvironment& env) {
+   return inherited::apply(operation, env) ? true
+      : Details::MethodAccess<DomainTraits>::apply(*this, (const typename inherited::Operation&) operation, (EvaluationEnvironment&) env);
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::mergeWith(const Scalar::VirtualElement& source, Scalar::EvaluationEnvironment& env) {
+   if (inherited::mergeWith(source, env))
+      return true;
+   return MethodAccess<DomainTraits>::mergeWithConstantFloat(*this, (const VirtualElement&) source, (EvaluationEnvironment&) env);
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::queryNewDisjunction(
+      const VirtualElement& thisElement, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::SizesEnvironment sizesEnv;
+   thisElement.query(QueryOperation().setSizes(), sizesEnv);
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement constantThis(inherited::createConstantElement(TypeRingTraits(), VirtualElement::InitFloat()), PNT::Pointer::Init());
+   env.presult().absorbElement(new Disjunction((const Disjunction::InitFloat&) Disjunction::InitFloat()
+         .setBitSize(inherited::getSize()*8).setTable(*constantThis)
+         .setSizeMantissa(sizesEnv.sizeMantissa()).setSizeExponent(sizesEnv.sizeExponent())));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::queryNewBooleanDisjunction(
+      const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement constantThis(TypeRingTraits::createIntElement(VirtualElement::Init()), PNT::Pointer::Init());
+   env.presult().absorbElement(new Disjunction(Disjunction::Init().setBitSize(constantThis->getSizeInBits())
+         .setTable(*constantThis)));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::queryNewMultiBitConstant(
+      const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(TypeRingTraits::createMultiBitElement(env.init()));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::queryNewMultiFloatConstant(
+      const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(TypeRingTraits::createMultiFloatElement(
+      (const VirtualElement::InitFloat&) env.init()));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::queryNewInterval(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement thisElement(inherited::createConstantElement(TypeRingTraits(), VirtualElement::InitFloat()), PNT::Pointer::Init());
+   AssumeCondition(dynamic_cast<const Details::VirtualRealInterval::Init*>(&env.init()))
+   env.presult().absorbElement(new Floating::Approximate::Interval(((const Details::VirtualRealInterval::Init&) env.init())));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::queryNewTop(
+      const VirtualElement& thisElement, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::SizesEnvironment sizesEnv;
+   thisElement.query(QueryOperation().setSizes(), sizesEnv);
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement constantThis(inherited::createConstantElement(TypeRingTraits(), VirtualElement::InitFloat()), PNT::Pointer::Init());
+   env.presult().absorbElement(new Top((const Top::InitFloat&) Top::InitFloat()
+         .setBitSize(inherited::getSize()*8).setTable(*constantThis)
+         .setApplyTop(&TTopCast<TypeRingTraits>::applyFloatingTop)
+         .setApplyToTop(&TTopCast<TypeRingTraits>::applyTo)
+         .setConstraintTop(&TTopCast<TypeRingTraits>::constraintFloatingTop)
+         .setSizeMantissa(sizesEnv.sizeMantissa()).setSizeExponent(sizesEnv.sizeExponent())));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::queryNewZero(
+      const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(inherited::createConstantElement(TypeRingTraits(), VirtualElement::InitFloat()));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::queryNewMin(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(inherited::createConstantElement(TypeRingTraits(), (VirtualElement::InitFloat&) VirtualElement::InitFloat()
+         .setInitialValue(inheritedImplementation(inheritedImplementation::getMin()))));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::queryNewMax(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(inherited::createConstantElement(TypeRingTraits(), (VirtualElement::InitFloat&) VirtualElement::InitFloat()
+         .setInitialValue(inheritedImplementation(inheritedImplementation::getMax()))));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::queryNewTrue(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(TypeRingTraits::createIntElement(VirtualElement::Init()
+         .setInitialValue(Integer::Implementation::IntElement(true))));
+   return true;
+}
+
+template <class TypeBased, class TypeRingTraits>
+bool
+TCloseCastFloatingBasedElement<TypeBased, TypeRingTraits>::queryNewFalse(const VirtualElement&,
+      const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   auto& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(TypeRingTraits::createIntElement(VirtualElement::Init()));
+   return true;
+}
+
+} //  end of namespace Details
+
+#ifdef _MSC_VER
+#pragma warning(default : 4244)
+#endif
+
+}}} // end of namespace Analyzer::Scalar::Approximate
+
+#endif // Analyzer_Scalar_Approximate_ConstantNativeElementTEMPLATE

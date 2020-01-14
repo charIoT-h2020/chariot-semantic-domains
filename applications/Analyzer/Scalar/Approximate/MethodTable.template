@@ -1,0 +1,251 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : approximate scalar elements
+// File      : MethodTable.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of virtual method tables for approximate scalar elements.
+//
+
+#ifndef Analyzer_Scalar_Approximate_MethodTableTEMPLATE
+#define Analyzer_Scalar_Approximate_MethodTableTEMPLATE
+
+namespace Analyzer { namespace Scalar { namespace Approximate {
+namespace Details {
+
+template <class TypeDomainTraits>
+bool
+MethodAccess<TypeDomainTraits>::apply(typename TypeDomainTraits::Domain& element, const Operation& operation,
+      EvaluationEnvironment& env) {
+   typename TypeDomainTraits::Operation::Type type = operation.getType();
+   PPVirtualElement copy;
+   if (operation.isConstWithAssign()) {
+      copy.setElement(element);
+      VirtualElement::assume(element.matMethodApplyTable[type].execute((typename TypeDomainTraits::Domain&) *copy, operation, env));
+      if (!env.isEmpty() && !env.presult().isValid())
+         env.presult() = copy;
+   }
+   else
+      VirtualElement::assume(element.matMethodApplyTable[type].execute(element, operation, env));
+   return true;
+}
+   
+template <class TypeDomainTraits>
+bool
+MethodAccess<TypeDomainTraits>::mergeWithConstantInt(const typename TypeDomainTraits::Domain& thisElement,
+      const VirtualElement& sourceElement, EvaluationEnvironment& env) {
+   typedef typename TypeDomainTraits::Domain::Methods Methods;
+   AssumeCondition(sourceElement.getApproxKind().isConstant())
+   PPVirtualElement minus = Methods::apply(thisElement, Methods::queryMinusSigned(thisElement), sourceElement, VirtualElement::EvaluationParameters(env));
+   env.mergeVerdictExact();
+   typename TypeDomainTraits::Domain::QueryOperation::CompareSpecialEnvironment compare = Methods::compareSpecialSigned(*minus);
+   if (compare.isZero())
+      return true;
+   env.setUnstable();
+   EvaluationEnvironment::LatticeCreation latticeCreation = env.getLatticeCreation();
+   if (latticeCreation.isTop() || latticeCreation.isShareTop()) {
+      env.presult() = Methods::newTop(thisElement);
+      return true;
+   };
+   if (latticeCreation.isDisjunction() || latticeCreation.isFormal()) {
+      PNT::TPassPointer<VirtualDisjunction, PPAbstractElement> result = Methods::newDisjunction(thisElement);
+      result->addExact(thisElement);
+      result->addExact(sourceElement);
+      env.presult() = result;
+      return true;
+   };
+   if (compare.isOne() && (thisElement.getMax() != thisElement.getElement()))
+      env.presult() = Methods::newInterval(thisElement, VirtualIntegerInterval::Init().setInterval(sourceElement, thisElement));
+   else if (compare.isMinusOne() && (thisElement.getMin() != thisElement.getElement()))
+      env.presult() = Methods::newInterval(thisElement, VirtualIntegerInterval::Init().setInterval(thisElement, sourceElement));
+   else {
+      if (latticeCreation.isInterval()) {
+         if (compare.isGreaterOrEqualZero())
+            env.presult() = Methods::newInterval(thisElement, VirtualIntegerInterval::Init().setInterval(sourceElement, thisElement));
+         else if (compare.isLessOrEqualZero())
+            env.presult() = Methods::newInterval(thisElement, VirtualIntegerInterval::Init().setInterval(thisElement, sourceElement));
+         else
+            env.presult() = Methods::newTop(thisElement);
+         return true;
+      };
+      PNT::TPassPointer<VirtualDisjunction, PPAbstractElement> disjunction = Methods::newDisjunction(thisElement);
+      disjunction->add(sourceElement, env.getInformationKind()).add(thisElement, env.getInformationKind());
+      env.presult() = disjunction;
+   };
+   return true;
+}
+
+template <class TypeDomainTraits>
+bool
+MethodAccess<TypeDomainTraits>::mergeWithConstantFloat(const typename TypeDomainTraits::Domain& thisElement,
+      const VirtualElement& sourceElement, EvaluationEnvironment& env) {
+   typedef typename TypeDomainTraits::Domain::Methods Methods;
+   AssumeCondition(sourceElement.getApproxKind().isConstant())
+   PPVirtualElement minus = Methods::apply(thisElement, Methods::queryMinusSigned(thisElement), sourceElement, VirtualElement::EvaluationParameters(env));
+   env.mergeVerdictExact();
+   typename TypeDomainTraits::Domain::QueryOperation::CompareSpecialEnvironment compare
+      = Methods::compareSpecial(*minus);
+   if (compare.isZero())
+      return true;
+   env.setUnstable();
+   EvaluationEnvironment::LatticeCreation latticeCreation = env.getLatticeCreation();
+   if ((latticeCreation.isTop() || latticeCreation.isShareTop())) {
+      env.presult() = Methods::newTop(thisElement);
+      return true;
+   };
+   if (latticeCreation.isInterval()) {
+      if (compare.isGreaterOrEqualZero())
+         env.presult() = Methods::newInterval(thisElement, sourceElement, thisElement);
+      else if (compare.isLessOrEqualZero())
+         env.presult() = Methods::newInterval(thisElement, thisElement, sourceElement);
+      else
+         env.presult() = Methods::newTop(thisElement);
+      return true;
+   };
+   PNT::TPassPointer<VirtualDisjunction, PPAbstractElement> disjunction = Methods::newDisjunction(thisElement);
+   disjunction->add(sourceElement, env.getInformationKind()).add(thisElement, env.getInformationKind());
+   env.presult() = disjunction;
+   return true;
+}
+
+template <class TypeDomainTraits>
+bool
+MethodAccess<TypeDomainTraits>::constraint(typename TypeDomainTraits::Domain& thisElement, const Operation& operation,
+      const VirtualElement& resultElement, ConstraintEnvironment& env) {
+   if (operation.getArgumentsNumber() == 0)
+      return thisElement.mctMethodConstraintTable.unaryTable()[operation.getType()].execute(thisElement, operation, resultElement, env);
+   
+   if ((operation.getType() >= Operation::StartOfCompare) && (operation.getType() < Operation::EndOfCompare)) {
+      VirtualElement::ZeroResult result = resultElement.queryZeroResult();
+      if (result.isTrue()) {
+         return thisElement.mctMethodConstraintTable.compareTable()[operation.getType()]
+            .execute(thisElement, operation, env.getFirstArgument(),
+               typename ConstraintEnvironment::Argument().setResult(), env);
+      }
+      else if (result.isFalse()) {
+         typename Operation::Type inverseOperation = (typename Operation::Type)
+            (Operation::EndOfCompare-1 - operation.getType() + Operation::StartOfCompare);
+         return thisElement.mctMethodConstraintTable.compareTable()[inverseOperation]
+            .execute(thisElement, operation, env.getFirstArgument(),
+               typename ConstraintEnvironment::Argument().setResult(), env);
+      }
+      else
+         env.mergeVerdictDegradate();
+      return true;
+   };
+   return thisElement.mctMethodConstraintTable.binaryTable()[operation.getType()]
+      .execute(thisElement, operation, env.getFirstArgument(), resultElement,
+         typename ConstraintEnvironment::Argument().setResult(), env);
+}
+
+template <class TypeDomainTraits>
+bool
+MethodAccess<TypeDomainTraits>::constraintConstant(typename TypeDomainTraits::Domain& thisElement, const Operation& operation,
+      const VirtualElement& resultElement, ConstraintEnvironment& env) {
+   AssumeCondition(operation.getArgumentsNumber() == 1)
+   
+   if ((operation.getType() >= Operation::StartOfCompare) && (operation.getType() < Operation::EndOfCompare)) {
+      VirtualElement::ZeroResult result = resultElement.queryZeroResult();
+      if (result.isTrue()) {
+         return thisElement.mctMethodConstraintTable.compareTable()[operation.getType()]
+            .execute(thisElement, operation, env.getFirstArgument(),
+               typename ConstraintEnvironment::Argument().setResult(), env);
+      }
+      else if (result.isFalse()) {
+         typename Operation::Type inverseOperation = (typename Operation::Type)
+            (Operation::EndOfCompare-1 - operation.getType() + Operation::StartOfCompare);
+         if (inverseOperation < Operation::TCompareEqual) {
+		    if ((Operation::StartOfCompare % 2) == (inverseOperation % 2))
+		       inverseOperation = (typename Operation::Type) (inverseOperation + 1);
+		    else
+		       inverseOperation = (typename Operation::Type) (inverseOperation - 1);
+         }
+         else if (inverseOperation > Operation::TCompareDifferent) {
+		    if ((Operation::EndOfCompare % 2) == (inverseOperation % 2))
+		       inverseOperation = (typename Operation::Type) (inverseOperation + 1);
+		    else
+		       inverseOperation = (typename Operation::Type) (inverseOperation - 1);
+         }
+         Operation compare(operation);
+         compare.setType(inverseOperation);
+         return thisElement.mctMethodConstraintTable.compareTable()[inverseOperation]
+            .execute(thisElement, compare, env.getFirstArgument(),
+               typename ConstraintEnvironment::Argument().setResult(), env);
+      }
+      else
+         env.mergeVerdictDegradate();
+      return true;
+   };
+   return thisElement.mctMethodConstraintTable.binaryTable()[operation.getType()]
+      .execute(thisElement, operation, env.getFirstArgument(), resultElement,
+         typename ConstraintEnvironment::Argument().setResult(), env);
+}
+   
+template <class TypeDomainTraits>
+bool
+MethodAccess<TypeDomainTraits>::constraintTo(typename TypeDomainTraits::Domain& argumentElement, const Operation& operation,
+      VirtualElement& thisElement, const VirtualElement& resultElement, ConstraintEnvironment& env) {
+   if ((operation.getType() >= Operation::StartOfCompare) && (operation.getType() < Operation::EndOfCompare)) {
+      VirtualElement::ZeroResult result = resultElement.queryZeroResult();
+      if (result.isFalse()) {
+         typename Operation::Type operationType = operation.getType();
+         if (operationType < Operation::TCompareEqual) {
+			if ((Operation::StartOfCompare % 2) == (operationType % 2))
+			   operationType = (typename Operation::Type) (operationType + 1);
+			else
+			   operationType = (typename Operation::Type) (operationType - 1);
+         }
+         else if (operationType > Operation::TCompareDifferent) {
+            if ((Operation::EndOfCompare % 2) == (operationType % 2))
+               operationType = (typename Operation::Type) (operationType + 1);
+            else
+               operationType = (typename Operation::Type) (operationType - 1);
+         }
+         else {
+	         operationType = (typename Operation::Type) (Operation::EndOfCompare-1 - operationType + Operation::StartOfCompare);
+         };
+         Operation compare(operation);
+         compare.setType(operationType);
+         return argumentElement.mctMethodConstraintTable.compareTable()[operationType]
+            .execute(argumentElement, compare, thisElement,
+                  typename ConstraintEnvironment::Argument().setFst(), env);
+      }
+      else if (result.isTrue()) {
+         typename Operation::Type inverseOperation = (typename Operation::Type)
+            (Operation::EndOfCompare-1 - operation.getType() + Operation::StartOfCompare);
+         if (inverseOperation >= Operation::TCompareEqual && inverseOperation <= Operation::TCompareDifferent) {
+            inverseOperation = operation.getType();
+         };
+/*       if (inverseOperation < Operation::TCompareEqual) {
+			if ((Operation::StartOfCompare % 2) == (inverseOperation % 2))
+			   inverseOperation = (typename Operation::Type) (inverseOperation + 1);
+			else
+			   inverseOperation = (typename Operation::Type) (inverseOperation - 1);
+         }
+         else if (inverseOperation > Operation::TCompareDifferent) {
+			if ((Operation::EndOfCompare % 2) == (inverseOperation % 2))
+			   inverseOperation = (typename Operation::Type) (inverseOperation + 1);
+			else
+			   inverseOperation = (typename Operation::Type) (inverseOperation - 1);
+         }; */
+         Operation compare(operation);
+         compare.setType(inverseOperation);
+         return argumentElement.mctMethodConstraintTable.compareTable()[inverseOperation]
+            .execute(argumentElement, compare, thisElement,
+                  typename ConstraintEnvironment::Argument().setFst(), env);
+      }
+      else
+         env.mergeVerdictDegradate();
+      return true;
+   };
+   return argumentElement.mctMethodConstraintTable.binaryTable()[operation.getType()]
+      .execute(argumentElement, operation, thisElement, resultElement,
+            typename ConstraintEnvironment::Argument().setFst(), env);
+}
+
+}}}} // end of namespace Analyzer::Scalar::Approximate::Details
+
+#endif // Analyzer_Scalar_Approximate_MethodTableTEMPLATE

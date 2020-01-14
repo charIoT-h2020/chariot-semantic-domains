@@ -1,0 +1,19 @@
+/////////////////////////////////
+//
+// Library   : Numerics
+// Unit      : Floating
+// File      : Floating.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of a class of floating points with unbound size.
+//
+
+#ifndef Numerics_FloatingTemplate
+#define Numerics_FloatingTemplate
+
+#include "Numerics/Floating.h"
+#include "ForwardNumerics/BaseFloating.template"
+
+#endif // Numerics_FloatingTemplate

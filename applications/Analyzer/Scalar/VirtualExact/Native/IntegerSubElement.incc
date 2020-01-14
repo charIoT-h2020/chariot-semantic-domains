@@ -1,0 +1,36 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : IntegerSubElement.incc
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of integer classes that are very helpful to define
+//     the compilation constants and the scalar elements used in
+//     simulation/symbolic execution.
+//
+
+/* DefineTypeObject                  : Type of the element                                   */
+
+#include "Analyzer/Scalar/VirtualExact/Native/CastInteger.incc"
+
+DefineImplementsUnaryMethod(PrevAssign)
+DefineImplementsUnaryMethod(NextAssign)
+DefineImplementsPromotionAssignMethod(PlusAssign)
+DefineImplementsPromotionAssignMethod(MinusAssign)
+DefineImplementsPromotionAssignMethod(TimesAssign)
+DefineImplementsPromotionAssignMethod(DivideAssign)
+DefineImplementsPromotionMethod(Opposite)
+DefineImplementsPromotionMethod(OppositeAssign)
+DefineImplementsPromotionAssignMethod(ModuloAssign)
+DefineImplementsBinaryMethod(BitOrAssign)
+DefineImplementsBinaryMethod(BitAndAssign)
+DefineImplementsBinaryMethod(BitExclusiveOrAssign)
+DefineImplementsUnaryMethod(BitNegateAssign)
+DefineImplementsOBinaryMethod(LeftShiftAssign, IntElement)
+DefineImplementsOBinaryMethod(RightShiftAssign, IntElement)
+
+#include "Analyzer/Scalar/VirtualExact/Native/IntegerMethodTable.incc"
+

@@ -1,0 +1,235 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : approximate native scalar elements
+// File      : ConstantBit.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   End of the implementation of a class of bit elements
+//   that relies on independent host analyses.
+//
+
+#ifndef Analyzer_Scalar_Approximate_ConstantBitTEMPLATE
+#define Analyzer_Scalar_Approximate_ConstantBitTEMPLATE
+
+namespace Analyzer {}
+
+#include "Analyzer/Scalar/Approximate/General/ConstantBit.h"
+#include "Analyzer/Scalar/Approximate/MethodTable.template"
+#include "Analyzer/Scalar/Approximate/Top.h"
+
+namespace Analyzer { namespace Scalar {
+
+namespace Bit { namespace Approximate {
+
+namespace DConstantElement {
+
+template <class TypeBase>
+TMethodApplyTable<TypeBase>::TMethodApplyTable() {
+#include "StandardClasses/UndefineNew.h"
+   TypeBase::clear();
+
+#define DefineInitMethodTable(TypeOperation)                                                      \
+   TypeBase::elementAt(Operation::T##TypeOperation).setMethod(&ConstantElement::apply##TypeOperation);
+
+#define DefineInitOMethodTable(TypeOperation, TypeMethod)                                         \
+   TypeBase::elementAt(Operation::T##TypeOperation).setMethod(&ConstantElement::apply##TypeMethod);
+
+   DefineInitMethodTable(CastMultiBit)
+   DefineInitMethodTable(PrevAssign)
+   DefineInitMethodTable(NextAssign)
+   DefineInitMethodTable(PlusAssign)
+   DefineInitMethodTable(MinusAssign)
+   DefineInitMethodTable(CompareLess)
+   DefineInitMethodTable(CompareLessOrEqual)
+   DefineInitMethodTable(CompareEqual)
+   DefineInitMethodTable(CompareDifferent)
+   DefineInitMethodTable(CompareGreater)
+   DefineInitMethodTable(CompareGreaterOrEqual)
+   DefineInitMethodTable(MinAssign)
+   DefineInitMethodTable(MaxAssign)
+   DefineInitMethodTable(OrAssign)
+   DefineInitMethodTable(AndAssign)
+   DefineInitMethodTable(ExclusiveOrAssign)
+   DefineInitMethodTable(NegateAssign)
+
+#undef DefineInitOMethodTable
+#undef DefineInitMethodTable
+#include "StandardClasses/DefineNew.h"
+}
+
+} // end of namespace DConstantElement
+
+template <class TypeRingTraits>
+TCloseConstantElement<TypeRingTraits>::MethodApplyTable::MethodApplyTable() {
+#include "StandardClasses/UndefineNew.h"
+
+#define DefineInitMethodTable(TypeOperation)                                                      \
+   inherited::elementAt(Operation::T##TypeOperation).setMethod(&thisType::apply##TypeOperation);
+
+   DefineInitMethodTable(CastChar)
+   DefineInitMethodTable(CastInt)
+   DefineInitMethodTable(CastUnsignedInt)
+
+#undef DefineInitMethodTable
+#include "StandardClasses/DefineNew.h"
+}
+
+template <class TypeRingTraits>
+typename TCloseConstantElement<TypeRingTraits>::MethodApplyTable
+TCloseConstantElement<TypeRingTraits>::matMethodApplyTable;
+
+template <class TypeRingTraits>
+TCloseConstantElement<TypeRingTraits>::QueryTable::QueryTable() {
+#include "StandardClasses/UndefineNew.h"
+   FunctionQueryTable* table = &inherited::elementAt(VirtualQueryOperation::TDomain);
+
+#define DefineInitQueryMethodTable(TypeOperation)                                                \
+   (*table)[QueryOperation::TD##TypeOperation].setMethod(&TCloseConstantElement<TypeRingTraits>::queryNew##TypeOperation);
+#define DefineInitQueryOMethodTable(TypeOperation, TypeMethod)                                   \
+   (*table)[QueryOperation::TD##TypeOperation].setMethod(&TCloseConstantElement<TypeRingTraits>::queryNew##TypeMethod);
+   
+   DefineInitQueryMethodTable(MultiBitConstant)
+   DefineInitQueryOMethodTable(Disjunction, Top)
+   DefineInitQueryMethodTable(Top)
+   DefineInitQueryMethodTable(True)
+   DefineInitQueryMethodTable(False)
+
+#undef DefineInitQueryMethodTable
+#undef DefineInitQueryOMethodTable
+
+#include "StandardClasses/DefineNew.h"
+}
+
+template <class TypeRingTraits>
+typename TCloseConstantElement<TypeRingTraits>::QueryTable TCloseConstantElement<TypeRingTraits>::mqtMethodQueryTable;
+
+/* Implementation of the class ConstantElement */
+
+template <class TypeRingTraits>
+bool
+TCloseConstantElement<TypeRingTraits>::applyTop(VirtualElement& topElement, const VirtualOperation& aoperation,
+      EvaluationEnvironment& env) {
+   if (inherited::applyTop(topElement, aoperation, env))
+      return true;
+
+   AssumeCondition(dynamic_cast<const typename inherited::Operation*>(&aoperation) && dynamic_cast<const Top*>(&topElement))
+   const Operation& operation = (const typename inherited::Operation&) aoperation;
+
+   typename inherited::Operation::Type type = operation.getType();
+   if ((type >= inherited::Operation::TCastChar) && (type <= inherited::Operation::TCastUnsignedInt)) {
+      PPVirtualElement intElement(TypeRingTraits::createIntElement(VirtualElement::Init()), PNT::Pointer::Init());
+      if (type == inherited::Operation::TCastInt)
+         env.presult() = Scalar::Approximate::Details::IntOperationElement::Methods::newTop(*intElement);
+      else if (type == inherited::Operation::TCastChar) 
+         env.presult() = Scalar::Approximate::Details::IntOperationElement::Methods::newTop(
+            *VirtualElement::Methods::apply(*intElement, Scalar::Integer::CastCharOperation(), EPExactStopErrorStates));
+      else if (type == inherited::Operation::TCastUnsignedInt) 
+         env.presult() = Scalar::Approximate::Details::IntOperationElement::Methods::newTop(
+            *VirtualElement::Methods::apply(*intElement, Scalar::Integer::CastUnsignedIntOperation(), EPExactStopErrorStates));
+      else
+         {  AssumeUncalled }
+      return true;
+   };
+   return false;
+}
+
+template <class TypeRingTraits>
+bool
+TCloseConstantElement<TypeRingTraits>::apply(const VirtualOperation& operation, Scalar::EvaluationEnvironment& env) {
+   return inherited::apply(operation, env) ? true
+      : Scalar::Approximate::Details::MethodAccess<DomainTraits>::apply(*this, (const typename inherited::Operation&) operation, (EvaluationEnvironment&) env);
+}
+
+template <class TypeRingTraits>
+bool
+TCloseConstantElement<TypeRingTraits>::query(const VirtualQueryOperation& operation, VirtualQueryOperation::Environment& env) const {
+   return inherited::query(operation, env) ? true
+      : Scalar::Approximate::Details::MethodAccess<DomainTraits>::query(*this, (const QueryOperation&) operation, env);
+}
+
+template <class TypeRingTraits>
+bool
+TCloseConstantElement<TypeRingTraits>::applyCastChar(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   PPVirtualElement intElement(TypeRingTraits::createIntElement(VirtualElement::Init()
+         .setInitialValue(Integer::Implementation::IntElement(fValue))), PNT::Pointer::Init());
+   env.presult() = VirtualElement::Methods::apply(*intElement,
+         Integer::CastCharOperation(), EPExactStopErrorStates);
+   return true;
+}
+
+template <class TypeRingTraits>
+bool
+TCloseConstantElement<TypeRingTraits>::applyCastInt(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   env.presult().absorbElement(TypeRingTraits::createIntElement(VirtualElement::Init()
+         .setInitialValue(Integer::Implementation::IntElement(fValue))));
+   return true;
+}
+
+template <class TypeRingTraits>
+bool
+TCloseConstantElement<TypeRingTraits>::applyCastUnsignedInt(const VirtualOperation& operation, EvaluationEnvironment& env) {
+   PPVirtualElement intElement(TypeRingTraits::createIntElement(VirtualElement::Init()
+         .setInitialValue(Scalar::Integer::Implementation::IntElement(fValue))), PNT::Pointer::Init());
+   env.presult() = VirtualElement::Methods::apply(*intElement,
+         Integer::CastUnsignedIntOperation(), EPExactStopErrorStates);
+   return true;
+}
+
+/***************************************/
+/* Implementation of the query methods */
+/***************************************/
+
+template <class TypeRingTraits>
+bool
+TCloseConstantElement<TypeRingTraits>::queryNewMultiBitConstant(const VirtualElement& element, const VirtualQueryOperation& operation,
+      VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   env.presult().absorbElement(TypeRingTraits::createMultiBitElement(env.init()));
+   return true;
+}
+
+template <class TypeRingTraits>
+bool
+TCloseConstantElement<TypeRingTraits>::queryNewTop(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement thisElement(TypeRingTraits::createBitElement(VirtualElement::Init()), PNT::Pointer::Init());
+   AssumeCondition(dynamic_cast<const ConstantElement*>(thisElement.key()))
+   env.presult().absorbElement(new Top(Top::Init().set1().setTable((ConstantElement&) *thisElement)
+         .setApplyTop(&thisType::applyTop).setApplyToTop(&thisType::applyToTop)
+         .setConstraintTop(&thisType::constraintTop)));
+   return true;
+}
+
+template <class TypeRingTraits>
+bool
+TCloseConstantElement<TypeRingTraits>::queryNewTrue(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement thisElement(TypeRingTraits::createBitElement(VirtualElement::Init()), PNT::Pointer::Init());
+   AssumeCondition(dynamic_cast<const ConstantElement*>(thisElement.key()))
+   ((thisType&) *thisElement).value() = true;
+   env.presult() = thisElement;
+   return true;
+}
+
+template <class TypeRingTraits>
+bool
+TCloseConstantElement<TypeRingTraits>::queryNewFalse(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   AssumeCondition(dynamic_cast<const QueryOperation::DomainEnvironment*>(&aenv))
+   QueryOperation::DomainEnvironment& env = (QueryOperation::DomainEnvironment&) aenv;
+   PPVirtualElement thisElement(TypeRingTraits::createBitElement(VirtualElement::Init()), PNT::Pointer::Init());
+   AssumeCondition(dynamic_cast<const ConstantElement*>(thisElement.key()))
+   ((thisType&) *thisElement).value() = false;
+   env.presult() = thisElement;
+   return true;
+}
+
+}}}} // end of namespace Analyzer::Scalar::Bit::Approximate
+
+#endif // Analyzer_Scalar_Approximate_ConstantBitTEMPLATE
+

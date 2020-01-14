@@ -1,0 +1,437 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : implementation of scalar elements specific to source code analysis
+// File      : FloatElement.incc
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of the floating point classes
+//
+
+/* DefineTypeFloatElement        : name of the floating point class                        */
+/* DefineTypeImplementation      : type of the implementation: float, double               */
+/* DefineTypeCastAssign          : defines the compatible types                            */
+/* DefineTypeLibSupported        : if defined the library functions are natively supported */
+/* DefineTypeMax                 : maximal positive floating point value                   */
+/* DefineTypeMin                 : mimimal positive floating point value                   */
+/* DefineTypeEpsilon             : minimal value for the mantissa                          */
+/* DefineTypeMantDig             : number of digits in the mantissa                        */
+/* DefineTypeMaxExp              : maximal positive value for the exponent                 */
+/* DefineNeedLongExponent        : for the long double, 32 bits exponent                   */
+
+#define DefineFloatAssign(TypeFloat)                                                              \
+void                                                                                              \
+DefineTypeFloatElement::assign(const TypeFloat& source, EvaluationEnvironment& env) {             \
+   if (((DefineTypeImplementation) source.getElement()) != source.getElement()) {                 \
+      if (source.getElement() < 0)                                                                \
+         env.setNegativeOverflow();                                                               \
+      else                                                                                        \
+         env.setPositiveOverflow();                                                               \
+   };                                                                                             \
+   dElement = (DefineTypeImplementation) source.getElement();                                     \
+}
+
+DefineTypeCastAssign
+
+#undef DefineFloatAssign
+
+class DefineTypeFloatElement::Utilities {
+  public:
+   static const DefineTypeImplementation MAX() { return DefineTypeMax; }
+   static const DefineTypeImplementation MIN()  { return DefineTypeMin; }
+   static const DefineTypeImplementation INF_MIN() { return DefineTypeMin*DefineTypeEpsilon; }
+
+   static bool isNaN(const DefineTypeImplementation& element)
+      {  if (!isInfinity(element))
+            return false;
+         char maskSupport[sizeof(DefineTypeImplementation)];
+         ::memcpy(&maskSupport[0], &element, sizeof(DefineTypeImplementation));
+         char* mask = ((char*) &maskSupport[0]) + sizeof(DefineTypeImplementation)-1;
+         for (int maskIndex = 0; maskIndex < (DefineTypeMantDig-1)/8; maskIndex++) {
+            if (*mask)
+               return true;
+            mask--;
+         };
+         if ((DefineTypeMantDig-1)%8)
+            return ((*mask) & ((1 << ((DefineTypeMantDig-1)%8))-1));
+         return false;
+      }
+   static bool isInfinity(const DefineTypeImplementation& element)
+      {  return getExponent(element) == (DefineTypeMaxExp); }
+   static bool isStrictlyInfinite(const DefineTypeImplementation& element)
+      {  return isInfinity(element) && !isNaN(element); }
+   static DefineTypeImplementation getEpsilon(const DefineTypeImplementation& element)
+      {  DefineTypeImplementation result = element*DefineTypeEpsilon;
+         if ((result == 0.0) && (element != 0.0))
+            return INF_MIN();
+         return (result >= 0.0) ? result : -result;
+      }
+   static int getExponent(const DefineTypeImplementation& element)
+      {  
+#if defined(DefineNeedLongExponent) || defined(_MSC_VER)
+         long int mask[2];
+         ::memset(&mask[0], '\0', 2*sizeof(long int));
+         ::memcpy(&mask[0], &element, sizeof(DefineTypeImplementation));
+         int result;
+#if defined(__GNUC__) && !defined(__clang__)
+         int lowMaskShift = (int) (sizeof(long int)*8) - (int) (sizeof(DefineTypeImplementation)*8-DefineTypeMantDig) - 1;
+         if (lowMaskShift >= 0)
+#else
+         if ((sizeof(long int)*8 - (sizeof(DefineTypeImplementation)*8-DefineTypeMantDig)-1) >= 0)
+#endif
+#if defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshift-count-negative"
+#endif
+#if defined(__GNUC__) && !defined(__clang__)
+            result = (int) ((mask[0] & (LONG_MAX)) >> lowMaskShift);
+#else
+            result = (int) ((mask[0] & (LONG_MAX)) >> (sizeof(long int)*8 - (sizeof(DefineTypeImplementation)*8-DefineTypeMantDig)-1));
+#endif
+#if defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+         else
+            result = (int) ((mask[1] & (LONG_MAX)) >> (2*sizeof(long int)*8 - (sizeof(DefineTypeImplementation)*8-DefineTypeMantDig)-1));
+#else
+         long long int mask=0;
+         ::memcpy(&mask, &element, sizeof(DefineTypeImplementation));
+         int result = ((mask & (LONG_LONG_MAX)) >> (sizeof(long long int)*8 - (sizeof(DefineTypeImplementation)*8-DefineTypeMantDig)-1));
+#endif
+         return result-DefineTypeMaxExp+1;
+      }
+   static bool isSignPos(const DefineTypeImplementation& element)
+      {  char mask;
+         // char* mask = (char*) &element;
+         ::memcpy(&mask, &element, 1);
+         return !(mask & 0x80);
+      }
+   static bool isNormalised(const DefineTypeImplementation& element)
+      {  return ((MIN() <= element) && (element <= MAX()))
+            || ((-MIN() >= element) && (element >= -MAX()));
+      }
+   static bool isRanged(const DefineTypeImplementation& element)
+      {  return ((INF_MIN() <= element) && (element <= MAX()))
+            || ((-INF_MIN() >= element) && (element >= -MAX()));
+      }
+   static bool isZero(const DefineTypeImplementation& element) { return element == 0.0; }
+   static void write(const DefineTypeImplementation& element, STG::IOObject::OSBase& out)
+      {  char maskSupport[sizeof(DefineTypeImplementation)];
+         ::memcpy(&maskSupport[0], &element, sizeof(DefineTypeImplementation));
+         char* mask = &maskSupport[0];
+         for (unsigned int maskIndex = 0; maskIndex < sizeof(DefineTypeImplementation)*8; maskIndex++) {
+            if ((maskIndex == 1) || (maskIndex == (sizeof(DefineTypeImplementation)*8-DefineTypeMantDig+1)))
+               out.put(' ');
+            out.writeint(((int) ((*mask) >> (7-maskIndex%8)) & 0x01));
+            if (maskIndex%8 == 7)
+               mask++;
+         };
+      }
+
+   static bool testOverflow(const DefineTypeImplementation& element, EvaluationEnvironment& env);
+   static bool testIntegrity(const DefineTypeImplementation& element, EvaluationEnvironment& env);
+};
+
+inline bool
+DefineTypeFloatElement::Utilities::testOverflow(const DefineTypeImplementation& result, EvaluationEnvironment& env) {
+   if (isNormalised(result))
+      return true;
+   if (isInfinity(result)) {
+      if (isStrictlyInfinite(result)) {
+         if (isSignPos(result))
+            env.setPositiveOverflow();
+         else
+            env.setNegativeOverflow();
+      }
+      else
+         env.setNaN();
+      return true;
+   };
+   return false;
+}
+
+inline bool
+DefineTypeFloatElement::Utilities::testIntegrity(const DefineTypeImplementation& result, EvaluationEnvironment& env) {
+   if (testOverflow(result, env))
+      return true;
+   if (Utilities::isRanged(result)) {
+      if (isSignPos(result))
+         env.setPositiveUnderflow();
+      else
+         env.setNegativeUnderflow();
+      return true;
+   }
+   return false;
+}
+
+int
+DefineTypeFloatElement::getSizeMantissa() { return DefineTypeMantDig; }
+
+int
+DefineTypeFloatElement::getSizeExponent() { return sizeof(DefineTypeImplementation)*8-DefineTypeMantDig-1; }
+
+int
+DefineTypeFloatElement::getExponent() const { return Utilities::getExponent(dElement); }
+
+DefineTypeImplementation
+DefineTypeFloatElement::getMin() { return -Utilities::MAX(); }
+
+DefineTypeImplementation
+DefineTypeFloatElement::getMax() { return Utilities::MAX(); }
+
+DefineTypeImplementation
+DefineTypeFloatElement::getEpsilon() const { return Utilities::getEpsilon(dElement); }
+
+void
+DefineTypeFloatElement::_write(STG::IOObject::OSBase& out, const STG::IOObject::FormatParameters& params) const {
+   if (params.isRaw()) {
+      STG::TChunk<char> chunk;
+      char mask[sizeof(DefineTypeImplementation)];
+      ::memcpy(&mask[0], &dElement, sizeof(DefineTypeImplementation));
+      chunk.string = (char*) &mask[0];
+      chunk.length = sizeof(DefineTypeImplementation);
+      out.writechunk(&chunk);
+   }
+   else
+      Utilities::write(dElement, out);
+}
+
+void
+DefineTypeFloatElement::apply(const PlusAssignOperation&, const DefineTypeFloatElement& source,
+      EvaluationEnvironment& env) {
+   DefineTypeImplementation result = dElement + source.dElement;
+   if (!Utilities::isNormalised(result) && // no error propagation
+       (Utilities::isNormalised(dElement) && Utilities::isNormalised(source.dElement)))
+      Utilities::testOverflow(result, env);
+   dElement = result;
+}
+
+void
+DefineTypeFloatElement::apply(const MinusAssignOperation&, const DefineTypeFloatElement& source,
+      EvaluationEnvironment& env) {
+   DefineTypeImplementation result = dElement - source.dElement;
+   if (!Utilities::isNormalised(result) && // no error propagation
+         (Utilities::isNormalised(dElement) && Utilities::isNormalised(source.dElement)))
+      Utilities::testOverflow(result, env);
+   dElement = result;
+}
+
+void
+DefineTypeFloatElement::apply(const OppositeAssignOperation&, EvaluationEnvironment&)
+   { dElement = -dElement; }
+
+void
+DefineTypeFloatElement::apply(const AbsAssignOperation&, EvaluationEnvironment&)
+   {  if (dElement < 0)
+         dElement = -dElement;
+   }
+
+void
+DefineTypeFloatElement::apply(const TimesAssignOperation&, const DefineTypeFloatElement& source,
+      EvaluationEnvironment& env) {
+   DefineTypeImplementation result = dElement * source.dElement;
+   if (!Utilities::isNormalised(result) && // no error propagation
+       (Utilities::isNormalised(dElement) && Utilities::isNormalised(source.dElement))) {
+      if (!Utilities::testIntegrity(result, env) && Utilities::isZero(result)) {
+         if (!Utilities::isZero(dElement) && !Utilities::isZero(source.dElement)) {
+            if (Utilities::isSignPos(result))
+               env.setPositiveUnderflow();
+            else
+               env.setNegativeUnderflow();
+         };
+      };
+   };
+   dElement = result;
+}
+
+void
+DefineTypeFloatElement::apply(const DivideAssignOperation&, const DefineTypeFloatElement& source,
+      EvaluationEnvironment& env) {
+   DefineTypeImplementation result = dElement / source.dElement;
+   if (!Utilities::isNormalised(result) && // no error propagation
+       (Utilities::isNormalised(dElement) && Utilities::isNormalised(source.dElement))) {
+      if (!Utilities::testIntegrity(result, env) && Utilities::isZero(result)) {
+         if (Utilities::isSignPos(result))
+            env.setPositiveUnderflow();
+         else
+            env.setNegativeUnderflow();
+      };
+   };
+   dElement = result;
+}
+
+/* specific floating point operations */
+
+#ifdef DefineTypeLibSupported
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const AcosOperation&, EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = acos(dElement);
+   if ((dElement < -1) || (dElement > 1))
+      env.setPositiveOverflow();
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const AsinOperation&, EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = asin(dElement);
+   if ((dElement < -1) || (dElement > 1))
+      env.setPositiveOverflow();
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const AtanOperation&, EvaluationEnvironment&) const
+   { return atan(dElement); }
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const Atan2Operation&, const DefineTypeFloatElement& source,
+      EvaluationEnvironment&) const
+   { return atan2(dElement, source.dElement); }
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const CeilOperation&, EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = ceil(dElement);
+   if (!Utilities::isNormalised(result) && Utilities::isNormalised(dElement))
+      Utilities::testOverflow(result, env);
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const CosOperation&, EvaluationEnvironment&) const
+   { return cos(dElement); }
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const CoshOperation&, EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = cosh(dElement);
+   if (!Utilities::isNormalised(result) && Utilities::isNormalised(dElement))
+      Utilities::testOverflow(result, env);
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const ExpOperation&, EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = exp(dElement);
+   if (!Utilities::isNormalised(result) && Utilities::isNormalised(dElement)) {
+      if (!Utilities::testIntegrity(result, env) && Utilities::isZero(result)) {
+         if (Utilities::isSignPos(result))
+            env.setPositiveUnderflow();
+         else
+            env.setNegativeUnderflow();
+      };
+   };
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const FabsOperation&, EvaluationEnvironment&) const
+   { return fabs(dElement); }
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const FloorOperation&, EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = floor(dElement);
+   if (!Utilities::isNormalised(result) && Utilities::isNormalised(dElement))
+      Utilities::testOverflow(result, env);
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const FmodOperation&, const DefineTypeFloatElement& source,
+      EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = fmod(dElement, source.dElement);
+   if (!Utilities::isNormalised(result) && Utilities::isNormalised(dElement)
+         && Utilities::isNormalised(source.dElement))
+      Utilities::testOverflow(result, env);
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const FrexpOperation&, int& expResult, EvaluationEnvironment&) const
+   { return frexp(dElement, &expResult); }
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const LdexpOperation&, int exp, EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = ldexp(dElement, exp);
+   if (!Utilities::isNormalised(result) && Utilities::isNormalised(dElement)) {
+      if (!Utilities::testIntegrity(result, env) && Utilities::isZero(result)) {
+         if (Utilities::isSignPos(result))
+            env.setPositiveUnderflow();
+         else
+            env.setNegativeUnderflow();
+      };
+   };
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const LogOperation&, EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = log(dElement);
+   if (!Utilities::isNormalised(result) && Utilities::isNormalised(dElement))
+      Utilities::testOverflow(result, env);
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const Log10Operation&, EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = log10(dElement);
+   if (!Utilities::isNormalised(result) && Utilities::isNormalised(dElement))
+      Utilities::testOverflow(result, env);
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const ModfOperation&, DefineTypeFloatElement& source,
+      EvaluationEnvironment&) const
+   {  return modf(dElement, &source.dElement); }
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const PowOperation&, const DefineTypeFloatElement& source,
+      EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = pow(dElement, source.dElement);
+   if (!Utilities::isNormalised(result) && // no error propagation
+       (Utilities::isNormalised(dElement) && Utilities::isNormalised(source.dElement))) {
+      if (!Utilities::testIntegrity(result, env) && Utilities::isZero(result)) {
+         if (Utilities::isSignPos(result))
+            env.setPositiveUnderflow();
+         else
+            env.setNegativeUnderflow();
+      };
+   };
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const SinOperation&, EvaluationEnvironment&) const
+   { return sin(dElement); }
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const SinhOperation&, EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = sinh(dElement);
+   if (!Utilities::isNormalised(result) && Utilities::isNormalised(dElement))
+      Utilities::testOverflow(result, env);
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const SqrtOperation&, EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = sqrt(dElement);
+   if (!Utilities::isNormalised(result) && Utilities::isNormalised(dElement))
+      Utilities::testOverflow(result, env);
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const TanOperation&, EvaluationEnvironment& env) const {
+   DefineTypeImplementation result = sqrt(dElement);
+   if (!Utilities::isNormalised(result) && Utilities::isNormalised(dElement))
+      Utilities::testOverflow(result, env);
+   return result;
+}
+
+DefineTypeImplementation
+DefineTypeFloatElement::apply(const TanhOperation&, EvaluationEnvironment&) const
+   { return tanh(dElement); }
+
+#endif // DefineTypeLibSupported

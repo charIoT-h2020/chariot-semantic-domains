@@ -1,0 +1,396 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : approximate native scalar elements
+// File      : BitFieldMask.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of a class of elements that rely on native host implementation.
+//   This defines template classes that enable to keep constraints on bits.
+//   All this stuff is rather defined for source code analysis.
+//
+
+#ifndef Analyzer_Scalar_Approximate_BitFieldMaskTEMPLATE
+#define Analyzer_Scalar_Approximate_BitFieldMaskTEMPLATE
+
+#include "Analyzer/Scalar/Approximate/BitFieldMask.h"
+#include "Analyzer/Scalar/Approximate/IntervalInteger.h"
+#include "Analyzer/Scalar/Approximate/Disjunction.h"
+#include "Analyzer/Scalar/Approximate/Conjunction.h"
+
+namespace Analyzer { namespace Scalar { namespace Approximate {
+
+/*****************************************************/
+/* Implementation of the template class BitFieldMask */
+/*****************************************************/
+
+#define DefineRegisterMethod(TypeDomain, TypeMethod) \
+   inherited::elementAt(VirtualElement::ApproxKind::T##TypeDomain).setMethod(&BitFieldMask<TypeAConstant>::TypeMethod);
+
+template <class TypeAConstant>
+BitFieldMask<TypeAConstant>::MethodMergeIntersectToTable::MethodMergeIntersectToTable() {
+#include "StandardClasses/UndefineNew.h"
+   typedef Details::MethodMergeIntersectToTable<DomainTraits> inherited;
+   this->clear(); // gcc hack
+   DefineRegisterMethod(Constant, intersectWithToConstant)
+   DefineRegisterMethod(Interval, intersectWithToInterval)
+
+   DefineRegisterMethod(Variable, intersectWithToUnprecise)
+   DefineRegisterMethod(FormalOperation, intersectWithToUnprecise)
+   DefineRegisterMethod(Pointer, intersectWithToUnprecise)
+   DefineRegisterMethod(Unprecise, intersectWithToUnprecise)
+   DefineRegisterMethod(Disjunction, intersectWithToDisjunction)
+   DefineRegisterMethod(Conjunction, intersectWithToConjunction)
+   DefineRegisterMethod(Top, intersectWithToUnprecise)
+   DefineRegisterMethod(Unknown, intersectWithToUnprecise)
+#include "StandardClasses/DefineNew.h"
+};
+
+#undef DefineRegisterMethod
+
+template <class TypeAConstant>
+typename BitFieldMask<TypeAConstant>::MethodMergeIntersectToTable BitFieldMask<TypeAConstant>::mmittMergeIntersectMethodTable;
+
+template <class TypeAConstant>
+bool
+BitFieldMask<TypeAConstant>::intersectWithToConstant(VirtualElement& asource, EvaluationEnvironment& env) const {
+   TypeAConstant& source = (TypeAConstant&) asource;
+   typename TypeAConstant::SimulatedType value = source.getImplementation().getElement();
+   if (((value & uOneMask) != uOneMask) || ((value | uZeroMask) != uZeroMask))
+      env.setEmpty();
+   return true;
+}
+
+template <class TypeAConstant>
+bool
+BitFieldMask<TypeAConstant>::intersectWithToInterval(VirtualElement& asource, EvaluationEnvironment& env) const {
+   AssumeCondition(dynamic_cast<const Details::IntegerInterval*>(&asource))
+   Details::IntegerInterval& source = (Details::IntegerInterval&) asource;
+   if (uOneMask == uZeroMask) {
+      TransmitEnvironment containEnv(env);
+      PPVirtualElement constant(pcReference->createSCopy(), PNT::Pointer::Init());
+      ((TypeAConstant&) *constant).getSImplementation().setElement(uOneMask);
+      assume(source.containConstant(*constant, containEnv));
+      if (!containEnv.isEmpty())
+         env.presult() = constant;
+   };
+   env.mergeVerdictDegradate();
+   
+   if (Methods::isSigned(source)) { // the integer class is signed
+      if ((uOneMask & (1 << (TypeAConstant::getSize()-1)))
+            || (~uZeroMask & (1 << (TypeAConstant::getSize()-1)))) { // mask => negative or positive
+         PPVirtualElement constantOneMask(pcReference->createSCopy(), PNT::Pointer::Init());
+         ((TypeAConstant&) *constantOneMask).getSImplementation().setElement(uOneMask);
+         PPVirtualElement constantZeroMask(pcReference->createSCopy(), PNT::Pointer::Init());
+         ((TypeAConstant&) *constantZeroMask).getSImplementation().setElement(uZeroMask);
+         Details::VirtualIntegerInterval::Init init;
+         init.setInterval(constantOneMask, constantZeroMask).setSigned();
+         return source.intersectWithInterval(*Methods::newInterval(source, init), env);
+      }
+      else {
+         typename TypeAConstant::SimulatedType
+            maxPositive = uZeroMask & ~(1 << (TypeAConstant::getSize()-1)),
+            minPositive = uOneMask,
+            maxNegative = uZeroMask,
+            minNegative = uOneMask | (1 << (TypeAConstant::getSize()-1));
+         PNT::TPassPointer<Details::IntegerInterval, PPAbstractElement> copySource(source);
+         TransmitEnvironment negativeEnv(env);
+         PPVirtualElement constantMinNegative(pcReference->createSCopy(), PNT::Pointer::Init());
+         ((TypeAConstant&) *constantMinNegative).getSImplementation().setElement(minNegative);
+         PPVirtualElement constantMaxNegative(pcReference->createSCopy(), PNT::Pointer::Init());
+         ((TypeAConstant&) *constantMaxNegative).getSImplementation().setElement(maxNegative);
+         {  Details::VirtualIntegerInterval::Init init;
+            init.setInterval(constantMinNegative, constantMaxNegative).setSigned();
+            inherited::assume(source.intersectWithInterval(*Methods::newInterval(source, init), negativeEnv));
+         };
+         TransmitEnvironment positiveEnv(env);
+         PPVirtualElement constantMinPositive(pcReference->createSCopy(), PNT::Pointer::Init());
+         ((TypeAConstant&) *constantMinPositive).getSImplementation().setElement(minPositive);
+         PPVirtualElement constantMaxPositive(pcReference->createSCopy(), PNT::Pointer::Init());
+         ((TypeAConstant&) *constantMaxPositive).getSImplementation().setElement(maxPositive);
+         {  Details::VirtualIntegerInterval::Init init;
+            init.setInterval(constantMinPositive, constantMaxPositive).setSigned();
+            inherited::assume(copySource->intersectWithInterval(*Methods::newInterval(source, init), positiveEnv));
+         };
+         if (!negativeEnv.isEmpty() && !negativeEnv.hasResult()) {
+            if (positiveEnv.isEmpty())
+               positiveEnv.clearEmpty();
+            else {
+               negativeEnv.merge();
+               positiveEnv.merge();
+               TransmitEnvironment mergeEnvironment(env);
+               source.mergeWith(positiveEnv.hasResult() ? positiveEnv.getResult()
+                  : (const Scalar::VirtualElement&) *copySource, mergeEnvironment);
+               if (mergeEnvironment.hasResult())
+                  env.presult() = mergeEnvironment.presult();
+            };
+         }
+         else if (negativeEnv.isEmpty()) {
+            negativeEnv.clearEmpty();
+            if (!positiveEnv.isEmpty()) {
+               if (positiveEnv.hasResult())
+                  env.presult() = positiveEnv.presult();
+               else
+                  env.presult() = copySource;
+            };
+         }
+         else {
+            if (!positiveEnv.isEmpty())
+               env.presult() = Methods::merge(negativeEnv.presult(),
+                  positiveEnv.hasResult() ? positiveEnv.getResult()
+                     : (const Approximate::VirtualElement&) *copySource, env);
+            else {
+               positiveEnv.clearEmpty();
+               env.presult() = negativeEnv.presult();
+            };
+         };
+      };
+   }
+   else { // the integer class is unsigned
+      PPVirtualElement constantOneMask(pcReference->createSCopy(), PNT::Pointer::Init());
+      ((TypeAConstant&) *constantOneMask).getSImplementation().setElement(uOneMask);
+      PPVirtualElement constantZeroMask(pcReference->createSCopy(), PNT::Pointer::Init());
+      ((TypeAConstant&) *constantZeroMask).getSImplementation().setElement(uZeroMask);
+      Details::VirtualIntegerInterval::Init init;
+      init.setInterval(constantOneMask, constantZeroMask).setUnsigned();
+      bool result = source.intersectWithInterval(*Methods::newInterval(source, init), env);
+      env.mergeVerdictDegradate();
+      return result;
+   };
+   return true;
+}
+
+template <class TypeAConstant>
+bool
+BitFieldMask<TypeAConstant>::intersectWithToDisjunction(VirtualElement& asource, EvaluationEnvironment& env) const {
+   AssumeCondition(dynamic_cast<const Disjunction*>(&asource))
+   Disjunction& source = (Disjunction&) asource;
+   Disjunction::ElementsList::Cursor sureCursor(source.sures());
+   for (bool doesContinue = sureCursor.setToFirst(); doesContinue; doesContinue = sureCursor.setToNext()) {
+      TransmitEnvironment transmitEnv(env);
+      intersectWithTo(sureCursor.elementSAt(), transmitEnv);
+      if (transmitEnv.isEmpty()) {
+         sureCursor.setToPrevious();
+         source.sures().freeNext(sureCursor);
+         transmitEnv.clearEmpty();
+      }
+      else if (transmitEnv.hasResult())
+         source.sures().replaceAndFreeElementAtWith(sureCursor, (VirtualElement*) transmitEnv.presult().extractElement());
+   };
+   Disjunction::ElementsList::Cursor mayCursor(source.mays());
+   for (bool doesContinue = mayCursor.setToFirst(); doesContinue; doesContinue = mayCursor.setToNext()) {
+      TransmitEnvironment transmitEnv(env);
+      intersectWithTo(mayCursor.elementSAt(), transmitEnv);
+      if (transmitEnv.isEmpty()) {
+         mayCursor.setToPrevious();
+         source.mays().freeNext(mayCursor);
+         transmitEnv.clearEmpty();
+      }
+      else if (transmitEnv.hasResult())
+         source.mays().replaceAndFreeElementAtWith(mayCursor, (VirtualElement*) transmitEnv.presult().extractElement());
+   };
+   Disjunction::ElementsList::Cursor exactCursor(source.exacts());
+   for (bool doesContinue = exactCursor.setToFirst(); doesContinue; doesContinue = exactCursor.setToNext()) {
+      TransmitEnvironment transmitEnv(env);
+      intersectWithTo(exactCursor.elementSAt(), transmitEnv);
+      if (transmitEnv.isEmpty()) {
+         exactCursor.setToPrevious();
+         source.exacts().freeNext(exactCursor);
+         transmitEnv.clearEmpty();
+      }
+      else if (transmitEnv.hasResult())
+         source.exacts().replaceAndFreeElementAtWith(exactCursor, (VirtualElement*) transmitEnv.presult().extractElement());
+   };
+   typename inherited::QueryOperation::SimplificationEnvironment simplificationEnv;
+   simplificationEnv.setInformationKind(env.getInformationKind());
+   assume(source.query(typename inherited::QueryOperation().setSimplification(), simplificationEnv));
+   if (simplificationEnv.isEmpty())
+      env.setEmpty();
+   else if (simplificationEnv.hasResult())
+      env.presult() = simplificationEnv.presult();
+   return true;
+}
+
+template <class TypeAConstant>
+bool
+BitFieldMask<TypeAConstant>::intersectWithToConjunction(VirtualElement& asource, EvaluationEnvironment& env) const {
+   AssumeCondition(dynamic_cast<const Conjunction*>(&asource))
+   Conjunction& source = (Conjunction&) asource;
+   Conjunction::ElementsList::Cursor cursor(source.subElements());
+   for (bool doesContinue = cursor.setToFirst(); doesContinue; doesContinue = cursor.setToNext()) {
+      TransmitEnvironment transmitEnv(env);
+      intersectWithTo(cursor.elementSAt().getElement(), transmitEnv);
+      if (transmitEnv.isEmpty())
+         return true;
+      else if (transmitEnv.hasResult())
+         cursor.elementSAt().selement() = transmitEnv.presult();
+   };
+   typename inherited::QueryOperation::SimplificationEnvironment simplificationEnv;
+   simplificationEnv.setInformationKind(env.getInformationKind());
+   assume(source.query(typename inherited::QueryOperation().setSimplification(), simplificationEnv));
+   if (simplificationEnv.isEmpty())
+      env.setEmpty();
+   else if (simplificationEnv.hasResult())
+      env.presult() = simplificationEnv.presult();
+   return true;
+}
+
+template <class TypeAConstant>
+bool
+BitFieldMask<TypeAConstant>::intersectWithToUnprecise(VirtualElement& source, EvaluationEnvironment& env) const {
+   env.mergeVerdictDegradate();
+   return true;
+}
+
+/******************************************************/
+/* Implementation of the template class MBitFieldMask */
+/******************************************************/
+
+#define DefineRegisterMethod(TypeDomain, TypeMethod) \
+   inherited::elementAt(VirtualElement::ApproxKind::T##TypeDomain).setMethod(&MBitFieldMask<TypeAConstant>::TypeMethod);
+
+template <class TypeAConstant>
+MBitFieldMask<TypeAConstant>::MethodMergeIntersectToTable::MethodMergeIntersectToTable() {
+#include "StandardClasses/UndefineNew.h"
+   typedef Details::MethodMergeIntersectToTable<DomainTraits> inherited;
+   this->clear(); // gcc hack
+   DefineRegisterMethod(Constant, intersectWithToConstant)
+   DefineRegisterMethod(Interval, intersectWithToInterval)
+
+   DefineRegisterMethod(Variable, intersectWithToUnprecise)
+   DefineRegisterMethod(FormalOperation, intersectWithToUnprecise)
+   DefineRegisterMethod(Pointer, intersectWithToUnprecise)
+   DefineRegisterMethod(Unprecise, intersectWithToUnprecise)
+   DefineRegisterMethod(Disjunction, intersectWithToDisjunction)
+   DefineRegisterMethod(Conjunction, intersectWithToConjunction)
+   DefineRegisterMethod(Top, intersectWithToUnprecise)
+   DefineRegisterMethod(Unknown, intersectWithToUnprecise)
+#include "StandardClasses/DefineNew.h"
+};
+
+#undef DefineRegisterMethod
+
+template <class TypeAConstant>
+typename MBitFieldMask<TypeAConstant>::MethodMergeIntersectToTable MBitFieldMask<TypeAConstant>::mmittMergeIntersectMethodTable;
+
+template <class TypeAConstant>
+bool
+MBitFieldMask<TypeAConstant>::intersectWithToConstant(VirtualElement& asource, EvaluationEnvironment& env) const {
+   TypeAConstant& source = (TypeAConstant&) asource;
+   if (((MultiBitImplementation((const MultiBitImplementation&) source) &= uOneMask).compare(uOneMask) != CREqual)
+         || ((MultiBitImplementation((const MultiBitImplementation&) source) |= uZeroMask).compare(uZeroMask) != CREqual))
+      env.setEmpty();
+   return true;
+}
+
+template <class TypeAConstant>
+bool
+MBitFieldMask<TypeAConstant>::intersectWithToInterval(VirtualElement& asource, EvaluationEnvironment& env) const {
+   AssumeCondition(dynamic_cast<const Details::IntegerInterval*>(&asource))
+   Details::IntegerInterval& source = (Details::IntegerInterval&) asource;
+   if (uOneMask.compare(uZeroMask) == CREqual) {
+      TransmitEnvironment containEnv(env);
+      PPVirtualElement reference(*pcReference);
+      ((MultiBitImplementation&) (TypeAConstant&) *reference).assignPart(uOneMask);
+      assume(source.containConstant(*reference, containEnv));
+      if (!containEnv.isEmpty())
+         env.presult() = reference;
+   };
+
+   PPVirtualElement oneMask(*pcReference), zeroMask(*pcReference);
+   ((MultiBitImplementation&) (TypeAConstant&) *oneMask).assignPart(uOneMask);
+   ((MultiBitImplementation&) (TypeAConstant&) *zeroMask).assignPart(uZeroMask);
+   Details::VirtualIntegerInterval::Init init;
+   init.setInterval(oneMask, zeroMask).setUnsigned();
+   bool result = source.intersectWithInterval(*Methods::newInterval(asource, init), env);
+   env.mergeVerdictDegradate();
+   return result;
+}
+
+template <class TypeAConstant>
+bool
+MBitFieldMask<TypeAConstant>::intersectWithToDisjunction(VirtualElement& asource, EvaluationEnvironment& env) const {
+   AssumeCondition(dynamic_cast<const Disjunction*>(&asource))
+   Disjunction& source = (Disjunction&) asource;
+   Disjunction::ElementsList::Cursor sureCursor(source.sures());
+   for (bool doesContinue = sureCursor.setToFirst(); doesContinue; doesContinue = sureCursor.setToNext()) {
+      TransmitEnvironment transmitEnv(env);
+      intersectWithTo(sureCursor.elementSAt(), transmitEnv);
+      if (transmitEnv.isEmpty()) {
+         sureCursor.setToPrevious();
+         source.sures().freeNext(sureCursor);
+         transmitEnv.clearEmpty();
+      }
+      else if (transmitEnv.hasResult())
+         source.sures().replaceAndFreeElementAtWith(sureCursor, (VirtualElement*) transmitEnv.presult().extractElement());
+   };
+   Disjunction::ElementsList::Cursor mayCursor(source.mays());
+   for (bool doesContinue = mayCursor.setToFirst(); doesContinue; doesContinue = mayCursor.setToNext()) {
+      TransmitEnvironment transmitEnv(env);
+      intersectWithTo(mayCursor.elementSAt(), transmitEnv);
+      if (transmitEnv.isEmpty()) {
+         mayCursor.setToPrevious();
+         source.mays().freeNext(mayCursor);
+         transmitEnv.clearEmpty();
+      }
+      else if (transmitEnv.hasResult())
+         source.mays().replaceAndFreeElementAtWith(mayCursor, (VirtualElement*) transmitEnv.presult().extractElement());
+   };
+   Disjunction::ElementsList::Cursor exactCursor(source.exacts());
+   for (bool doesContinue = exactCursor.setToFirst(); doesContinue; doesContinue = exactCursor.setToNext()) {
+      TransmitEnvironment transmitEnv(env);
+      intersectWithTo(exactCursor.elementSAt(), transmitEnv);
+      if (transmitEnv.isEmpty()) {
+         exactCursor.setToPrevious();
+         source.exacts().freeNext(exactCursor);
+         transmitEnv.clearEmpty();
+      }
+      else if (transmitEnv.hasResult())
+         source.exacts().replaceAndFreeElementAtWith(exactCursor, (VirtualElement*) transmitEnv.presult().extractElement());
+   };
+   typename inherited::QueryOperation::SimplificationEnvironment simplificationEnv;
+   simplificationEnv.setInformationKind(env.getInformationKind());
+   assume(source.query(typename inherited::QueryOperation().setSimplification(), simplificationEnv));
+   if (simplificationEnv.isEmpty())
+      env.setEmpty();
+   else if (simplificationEnv.hasResult())
+      env.presult() = simplificationEnv.presult();
+   return true;
+}
+
+template <class TypeAConstant>
+bool
+MBitFieldMask<TypeAConstant>::intersectWithToConjunction(VirtualElement& asource, EvaluationEnvironment& env) const {
+   AssumeCondition(dynamic_cast<const Conjunction*>(&asource))
+   Conjunction& source = (Conjunction&) asource;
+   Conjunction::ElementsList::Cursor cursor(source.subElements());
+   for (bool doesContinue = cursor.setToFirst(); doesContinue; doesContinue = cursor.setToNext()) {
+      TransmitEnvironment transmitEnv(env);
+      intersectWithTo(cursor.elementSAt().getElement(), transmitEnv);
+      if (transmitEnv.isEmpty())
+         return true;
+      else if (transmitEnv.hasResult())
+         cursor.elementSAt().selement() = transmitEnv.presult();
+   };
+   typename inherited::QueryOperation::SimplificationEnvironment simplificationEnv;
+   simplificationEnv.setInformationKind(env.getInformationKind());
+   assume(source.query(typename inherited::QueryOperation().setSimplification(), simplificationEnv));
+   if (simplificationEnv.isEmpty())
+      env.setEmpty();
+   else if (simplificationEnv.hasResult())
+      env.presult() = simplificationEnv.presult();
+   return true;
+}
+
+template <class TypeAConstant>
+bool
+MBitFieldMask<TypeAConstant>::intersectWithToUnprecise(VirtualElement& source, EvaluationEnvironment& env) const {
+   env.mergeVerdictDegradate();
+   return true;
+}
+
+}}} // end of namespace Analyzer::Scalar::Approximate
+
+#endif // Analyzer_Scalar_Approximate_BitFieldMaskTEMPLATE

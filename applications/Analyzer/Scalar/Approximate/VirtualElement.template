@@ -1,0 +1,444 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements
+// File      : VirtualElement.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of a hierarchy for approximate scalar elements.
+//   The approximate elements can be used in abstract interpretation
+//     based analyses, in pure formal analyses or in model checking.
+//
+
+#ifndef Analyzer_Scalar_Approximate_VirtualElementTemplate
+#define Analyzer_Scalar_Approximate_VirtualElementTemplate
+
+#include "Analyzer/Scalar/Approximate/VirtualElement.h"
+// #include "Analyzer/Scalar/Scalar.hpp"
+
+namespace Analyzer { namespace Scalar { namespace MultiBit { namespace Approximate {
+
+namespace Details {
+
+template <class OperationTraits>
+bool
+BaseAlgorithms::constraintPlusConstantOperationAssign(OperationTraits traits, VirtualElement& thisElement,
+      const VirtualOperation&, VirtualElement& sourceElement, const VirtualElement& resultElement,
+      ConstraintEnvironment::Argument arg, ConstraintEnvironment& env) { // a+b = x -> a = x-b et b = x-a
+   env.mergeVerdictExact();
+   PPVirtualElement newElement = Details::IntOperationElement::Methods::applyAssign(
+         PPVirtualElement(resultElement), typename OperationTraits::MinusOperation(), thisElement,
+         VirtualElement::EvaluationApplyParameters(env));
+   IntersectEnvironment sourceIntersectionEnv(env, arg.queryInverse());
+   sourceElement.intersectWith(*newElement, sourceIntersectionEnv);
+   return true;
+}
+
+template <class OperationTraits>
+bool
+BaseAlgorithms::constraintMinusConstantOperationAssign(OperationTraits traits, VirtualElement& thisElement,
+      const VirtualOperation&, VirtualElement& sourceElement, const VirtualElement& resultElement,
+      ConstraintEnvironment::Argument arg, ConstraintEnvironment& env) { // a-b = x -> a = b+x et b = a-x
+   IntersectEnvironment intersectEnv(env, arg.queryInverse());
+   PPVirtualElement newElement = (arg.isResult())
+      ? Approximate::Details::IntOperationElement::Methods::applyAssign(
+         PPVirtualElement(resultElement),
+         typename OperationTraits::PlusOperation(), thisElement,
+         VirtualElement::EvaluationApplyParameters(env))
+      : Approximate::Details::IntOperationElement::Methods::applyAssign(
+         PPVirtualElement(thisElement),
+         typename OperationTraits::PlusOperation(), resultElement,
+         VirtualElement::EvaluationApplyParameters(env));
+   sourceElement.intersectWith(*newElement, intersectEnv);
+   return true;
+}
+
+template <class TypeQueryTable, class TypeElement>
+void
+BaseAlgorithms::fillTable(TypeQueryTable& table, TypeElement*) {
+   typedef Approximate::Details::IntOperationElement::QueryOperation QueryOperation;
+   VirtualElement::FunctionQueryTable& operationTable = table[VirtualQueryOperation::TOperation].getFunctionTable();
+   operationTable.setSize(QueryOperation::EndOfTypeOperation);
+   
+#define DefineInitQueryMethodTable(TypeOperation)                              \
+   operationTable[QueryOperation::TO##TypeOperation].setMethod(&TypeElement::query##TypeOperation##Operation);
+
+   DefineInitQueryMethodTable(NextSignedAssign)
+   DefineInitQueryMethodTable(NextUnsignedAssign)
+   DefineInitQueryMethodTable(PrevSignedAssign)
+   DefineInitQueryMethodTable(PrevUnsignedAssign)
+   DefineInitQueryMethodTable(MinusUnsigned)
+   DefineInitQueryMethodTable(MinusSignedAssign)
+   DefineInitQueryMethodTable(MinusUnsignedAssign)
+   DefineInitQueryMethodTable(PlusSigned)
+   DefineInitQueryMethodTable(PlusUnsigned)
+   DefineInitQueryMethodTable(PlusSignedAssign)
+   DefineInitQueryMethodTable(PlusUnsignedAssign)
+   DefineInitQueryMethodTable(DivideSigned)
+   DefineInitQueryMethodTable(DivideUnsigned)
+   DefineInitQueryMethodTable(DivideSignedAssign)
+   DefineInitQueryMethodTable(DivideUnsignedAssign)
+   DefineInitQueryMethodTable(TimesSigned)
+   DefineInitQueryMethodTable(TimesUnsigned)
+   DefineInitQueryMethodTable(TimesSignedAssign)
+   DefineInitQueryMethodTable(TimesUnsignedAssign)
+   DefineInitQueryMethodTable(ModuloSigned)
+   DefineInitQueryMethodTable(ModuloUnsigned)
+   DefineInitQueryMethodTable(ModuloSignedAssign)
+   DefineInitQueryMethodTable(ModuloUnsignedAssign)
+   DefineInitQueryMethodTable(RightShiftSigned)
+   DefineInitQueryMethodTable(RightShiftUnsigned)
+   DefineInitQueryMethodTable(RightShiftSignedAssign)
+   DefineInitQueryMethodTable(RightShiftUnsignedAssign)
+   DefineInitQueryMethodTable(MinSigned)
+   DefineInitQueryMethodTable(MinUnsigned)
+   DefineInitQueryMethodTable(MinSignedAssign)
+   DefineInitQueryMethodTable(MinUnsignedAssign)
+   DefineInitQueryMethodTable(MaxSigned)
+   DefineInitQueryMethodTable(MaxUnsigned)
+   DefineInitQueryMethodTable(MaxSignedAssign)
+   DefineInitQueryMethodTable(MaxUnsignedAssign)
+   DefineInitQueryMethodTable(CompareGreaterOrEqualSigned)
+   DefineInitQueryMethodTable(CompareGreaterOrEqualUnsigned)
+   DefineInitQueryMethodTable(CompareGreaterSigned)
+   DefineInitQueryMethodTable(CompareGreaterUnsigned)
+   DefineInitQueryMethodTable(CompareLessOrEqualSigned)
+   DefineInitQueryMethodTable(CompareLessOrEqualUnsigned)
+   DefineInitQueryMethodTable(CompareLessSigned)
+   DefineInitQueryMethodTable(CompareLessUnsigned)
+   
+   DefineInitQueryMethodTable(InverseCast)
+   DefineInitQueryMethodTable(NextAssign)
+   DefineInitQueryMethodTable(PrevAssign)
+   DefineInitQueryMethodTable(Minus)
+   DefineInitQueryMethodTable(MinusSigned)
+   DefineInitQueryMethodTable(MinusAssign)
+   DefineInitQueryMethodTable(Plus)
+   DefineInitQueryMethodTable(PlusAssign)
+   DefineInitQueryMethodTable(Divide)
+   DefineInitQueryMethodTable(DivideAssign)
+   DefineInitQueryMethodTable(Times)
+   DefineInitQueryMethodTable(TimesAssign)
+   DefineInitQueryMethodTable(ModuloAssign)
+   DefineInitQueryMethodTable(Modulo)
+   DefineInitQueryMethodTable(LeftShift)
+   DefineInitQueryMethodTable(LeftShiftAssign)
+   DefineInitQueryMethodTable(RightShift)
+   DefineInitQueryMethodTable(RightShiftAssign)
+   DefineInitQueryMethodTable(InverseRotateAssign)
+   DefineInitQueryMethodTable(BitNegate)
+   DefineInitQueryMethodTable(BitNegateAssign)
+   DefineInitQueryMethodTable(BitOrAssign)
+   DefineInitQueryMethodTable(BitOr)
+   DefineInitQueryMethodTable(BitAndAssign)
+   DefineInitQueryMethodTable(BitAnd)
+   DefineInitQueryMethodTable(BitExclusiveOrAssign)
+   DefineInitQueryMethodTable(BitExclusiveOr)
+   DefineInitQueryMethodTable(Opposite)
+   DefineInitQueryMethodTable(OppositeAssign)
+   DefineInitQueryMethodTable(MinAssign)
+   DefineInitQueryMethodTable(Min)
+   DefineInitQueryMethodTable(MaxAssign)
+   DefineInitQueryMethodTable(Max)
+   DefineInitQueryMethodTable(CompareGreaterOrEqual)
+   DefineInitQueryMethodTable(CompareGreater)
+   DefineInitQueryMethodTable(CompareLessOrEqual)
+   DefineInitQueryMethodTable(CompareLess)
+   DefineInitQueryMethodTable(CompareEqual)
+   DefineInitQueryMethodTable(CompareDifferent)
+   
+#undef DefineInitQueryMethodTable
+
+   VirtualElement::FunctionQueryTable& externTable = table[VirtualQueryOperation::TExtern].getFunctionTable();
+   externTable.setSize(QueryOperation::EndOfTypeExtern);
+   externTable[QueryOperation::TENativeOperation].setMethod(&TypeElement::queryMultiBitNativeOperation);
+}
+
+} // end of namespace Details
+
+template <class TypeBase>
+TVirtualElement<TypeBase>::QueryTable::QueryTable() {
+   Details::BaseAlgorithms::fillTable(*this, (TVirtualElement<TypeBase>*) nullptr);
+}
+
+}} // end of namespace MultiBit::Approximate
+            
+namespace Integer { namespace Approximate {
+
+namespace Details {
+
+template <class TypeQueryTable, class TypeElement>
+void
+BaseAlgorithms::fillTable(TypeQueryTable& table, TypeElement*) {
+   typedef Approximate::Details::IntOperationElement::QueryOperation QueryOperation;
+   typename VirtualElement::FunctionQueryTable& operationTable = table[VirtualQueryOperation::TOperation].getFunctionTable();
+   operationTable.setSize(QueryOperation::EndOfTypeOperation);
+
+#define DefineInitQueryMethodTable(TypeOperation)                                \
+   operationTable[QueryOperation::TO##TypeOperation].setMethod(&TypeElement::query##TypeOperation##Operation);
+#define DefineInitOQueryMethodTable(TypeOperation, TypeImplementation)           \
+   operationTable[QueryOperation::TO##TypeOperation].setMethod(&TypeElement::query##TypeImplementation##Operation);
+
+   DefineInitOQueryMethodTable(NextSignedAssign, NextAssign)
+   DefineInitOQueryMethodTable(NextUnsignedAssign, NextAssign)
+   DefineInitOQueryMethodTable(PrevSignedAssign, PrevAssign)
+   DefineInitOQueryMethodTable(PrevUnsignedAssign, PrevAssign)
+   DefineInitOQueryMethodTable(MinusUnsigned, Minus)
+   DefineInitOQueryMethodTable(MinusSignedAssign, MinusAssign)
+   DefineInitOQueryMethodTable(MinusUnsignedAssign, MinusAssign)
+   DefineInitOQueryMethodTable(PlusSigned, Plus)
+   DefineInitOQueryMethodTable(PlusUnsigned, Plus)
+   DefineInitOQueryMethodTable(PlusSignedAssign, PlusAssign)
+   DefineInitOQueryMethodTable(PlusUnsignedAssign, PlusAssign)
+   DefineInitOQueryMethodTable(DivideSigned, Divide)
+   DefineInitOQueryMethodTable(DivideUnsigned, Divide)
+   DefineInitOQueryMethodTable(DivideSignedAssign, DivideAssign)
+   DefineInitOQueryMethodTable(DivideUnsignedAssign, DivideAssign)
+   DefineInitOQueryMethodTable(TimesSigned, Times)
+   DefineInitOQueryMethodTable(TimesUnsigned, Times)
+   DefineInitOQueryMethodTable(TimesSignedAssign, TimesAssign)
+   DefineInitOQueryMethodTable(TimesUnsignedAssign, TimesAssign)
+   DefineInitOQueryMethodTable(ModuloSigned, Modulo)
+   DefineInitOQueryMethodTable(ModuloUnsigned, Modulo)
+   DefineInitOQueryMethodTable(ModuloSignedAssign, ModuloAssign)
+   DefineInitOQueryMethodTable(ModuloUnsignedAssign, ModuloAssign)
+   DefineInitOQueryMethodTable(RightShiftSigned, RightShift)
+   DefineInitOQueryMethodTable(RightShiftUnsigned, RightShift)
+   DefineInitOQueryMethodTable(RightShiftSignedAssign, RightShiftAssign)
+   DefineInitOQueryMethodTable(RightShiftUnsignedAssign, RightShiftAssign)
+   DefineInitOQueryMethodTable(MinSigned, Min)
+   DefineInitOQueryMethodTable(MinUnsigned, Min)
+   DefineInitOQueryMethodTable(MinSignedAssign, MinAssign)
+   DefineInitOQueryMethodTable(MinUnsignedAssign, MinAssign)
+   DefineInitOQueryMethodTable(MaxSigned, Max)
+   DefineInitOQueryMethodTable(MaxUnsigned, Max)
+   DefineInitOQueryMethodTable(MaxSignedAssign, MaxAssign)
+   DefineInitOQueryMethodTable(MaxUnsignedAssign, MaxAssign)
+   DefineInitOQueryMethodTable(CompareGreaterOrEqualSigned, CompareGreaterOrEqual)
+   DefineInitOQueryMethodTable(CompareGreaterOrEqualUnsigned, CompareGreaterOrEqual)
+   DefineInitOQueryMethodTable(CompareGreaterSigned, CompareGreater)
+   DefineInitOQueryMethodTable(CompareGreaterUnsigned, CompareGreater)
+   DefineInitOQueryMethodTable(CompareLessOrEqualSigned, CompareLessOrEqual)
+   DefineInitOQueryMethodTable(CompareLessOrEqualUnsigned, CompareLessOrEqual)
+   DefineInitOQueryMethodTable(CompareLessSigned, CompareLess)
+   DefineInitOQueryMethodTable(CompareLessUnsigned, CompareLess)
+
+   DefineInitQueryMethodTable(NextAssign)
+   DefineInitQueryMethodTable(PrevAssign)
+   DefineInitQueryMethodTable(Minus)
+   DefineInitOQueryMethodTable(MinusSigned, Minus)
+   DefineInitQueryMethodTable(MinusAssign)
+   DefineInitQueryMethodTable(Plus)
+   DefineInitQueryMethodTable(PlusAssign)
+   DefineInitQueryMethodTable(Divide)
+   DefineInitQueryMethodTable(DivideAssign)
+   DefineInitQueryMethodTable(Times)
+   DefineInitQueryMethodTable(TimesAssign)
+   DefineInitQueryMethodTable(ModuloAssign)
+   DefineInitQueryMethodTable(Modulo)
+   DefineInitQueryMethodTable(LeftShift)
+   DefineInitQueryMethodTable(LeftShiftAssign)
+   DefineInitQueryMethodTable(RightShift)
+   DefineInitQueryMethodTable(RightShiftAssign)
+   DefineInitQueryMethodTable(InverseRotateAssign)
+   DefineInitQueryMethodTable(BitNegate)
+   DefineInitQueryMethodTable(BitNegateAssign)
+   DefineInitQueryMethodTable(BitOrAssign)
+   DefineInitQueryMethodTable(BitOr)
+   DefineInitQueryMethodTable(BitAndAssign)
+   DefineInitQueryMethodTable(BitAnd)
+   DefineInitQueryMethodTable(BitExclusiveOrAssign)
+   DefineInitQueryMethodTable(BitExclusiveOr)
+   DefineInitQueryMethodTable(Opposite)
+   DefineInitQueryMethodTable(OppositeAssign)
+   DefineInitQueryMethodTable(MinAssign)
+   DefineInitQueryMethodTable(Min)
+   DefineInitQueryMethodTable(MaxAssign)
+   DefineInitQueryMethodTable(Max)
+   DefineInitQueryMethodTable(CompareGreaterOrEqual)
+   DefineInitQueryMethodTable(CompareGreater)
+   DefineInitQueryMethodTable(CompareLessOrEqual)
+   DefineInitQueryMethodTable(CompareLess)
+   DefineInitQueryMethodTable(CompareEqual)
+   DefineInitQueryMethodTable(CompareDifferent)
+   
+#undef DefineInitQueryMethodTable
+#undef DefineInitOQueryMethodTable
+
+   VirtualElement::FunctionQueryTable& externTable = table[VirtualQueryOperation::TExtern].getFunctionTable();
+   externTable.setSize(QueryOperation::EndOfTypeExtern);
+   externTable[QueryOperation::TENativeOperation].setMethod(&TypeElement::queryIntegerNativeOperation);
+}
+
+} // end of namespace Details
+
+template <class TypeBase>
+TVirtualElement<TypeBase>::QueryTable::QueryTable() {
+   Details::BaseAlgorithms::fillTable(*this, (TVirtualElement<TypeBase>*) nullptr);
+}
+   
+}} // end of namespace Integer::Approximate
+
+namespace Floating { namespace Approximate {
+
+namespace Details {
+
+template <class TypeQueryTable, class TypeElement>
+void
+BaseAlgorithms::fillTable(TypeQueryTable& table, TypeElement*) {
+   typedef Approximate::Details::RealOperationElement::QueryOperation QueryOperation;
+   VirtualElement::FunctionQueryTable& operationTable = table[VirtualQueryOperation::TOperation].getFunctionTable();
+   operationTable.setSize(QueryOperation::EndOfTypeOperation);
+   
+#define DefineInitQueryMethodTable(TypeOperation)                              \
+   operationTable[QueryOperation::TO##TypeOperation].setMethod(&TypeElement::query##TypeOperation##Operation);
+
+   DefineInitQueryMethodTable(Minus)
+   DefineInitQueryMethodTable(MinusSigned)
+   DefineInitQueryMethodTable(MinusAssign)
+   DefineInitQueryMethodTable(CompareGreaterOrEqual)
+   DefineInitQueryMethodTable(CompareGreater)
+   DefineInitQueryMethodTable(CompareLessOrEqual)
+   DefineInitQueryMethodTable(CompareLess)
+   DefineInitQueryMethodTable(CompareEqual)
+   
+#undef DefineInitQueryMethodTable
+
+   VirtualElement::FunctionQueryTable& externTable = table[VirtualQueryOperation::TExtern].getFunctionTable();
+   externTable.setSize(QueryOperation::EndOfTypeExtern);
+   externTable[QueryOperation::TENativeOperation].setMethod(&TypeElement::queryFloatingNativeOperation);
+}
+
+} // end of namespace Details
+
+template <class TypeBase>
+TVirtualElement<TypeBase>::QueryTable::QueryTable() {
+   Details::BaseAlgorithms::fillTable(*this, (TVirtualElement<TypeBase>*) nullptr);
+}
+
+template <class TypeBase>
+bool
+TVirtualElement<TypeBase>::constraintPlusAssign(VirtualElement&, const VirtualOperation&, VirtualElement& source, const VirtualElement& result, ConstraintEnvironment& env) {
+   env.mergeVerdictDegradate();
+   return true;
+}
+
+template <class TypeBase>
+bool
+TVirtualElement<TypeBase>::constraintMinusAssign(VirtualElement&, const VirtualOperation&, VirtualElement& source, const VirtualElement& result, ConstraintEnvironment& env) {
+   env.mergeVerdictDegradate();
+   return true;
+}
+
+template <class TypeBase>
+bool
+TVirtualElement<TypeBase>::constraintTimesAssign(VirtualElement&, const VirtualOperation&, VirtualElement& source, const VirtualElement& result, ConstraintEnvironment& env) {
+   env.mergeVerdictDegradate();
+   return true;
+}
+
+template <class TypeBase>
+bool
+TVirtualElement<TypeBase>::constraintDivideAssign(VirtualElement&, const VirtualOperation&, VirtualElement& source, const VirtualElement& result, ConstraintEnvironment& env) {
+   env.mergeVerdictDegradate();
+   return true;
+}
+
+template <class TypeBase>
+bool
+TVirtualElement<TypeBase>::constraintOppositeAssign(VirtualElement&, const VirtualOperation&, const VirtualElement& result, ConstraintEnvironment& env) {
+   env.mergeVerdictDegradate();
+   return true;
+}
+
+}} // end of namespace Floating::Approximate
+
+namespace Real { namespace Approximate {
+   
+template <class TypeBase>
+bool
+TVirtualElement<TypeBase>::queryInverseCastOperation(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   typename TypeBase::QueryOperation::InverseCastOperationEnvironment& env = (typename TypeBase::QueryOperation::InverseCastOperationEnvironment&) aenv;
+   Scalar::Real::Operation::Type type = env.reference().getType();
+   if ((type >= Scalar::Real::Operation::TCastChar) && (type <= Scalar::Real::Operation::TCastUnsignedLong))
+      env.resultAsInteger().setCastReal();
+   else if ((type >= Scalar::Real::Operation::TCastFloat) && (type <= Scalar::Real::Operation::TCastLongDouble))
+      env.resultAsFloating().setCastReal();
+   else if (type == Scalar::Real::Operation::TCastRational)
+      env.resultAsRational().setCastReal();
+   else if (type == Scalar::Real::Operation::TCastMultiBit)
+      env.resultAsMultiBit().setCastReal();
+   else
+      { AssumeUncalled }
+   return true;
+}
+
+#define DefineOperation(TypeOperation)                                                                            \
+template <class TypeBase>                                                                                         \
+bool                                                                                                              \
+TVirtualElement<TypeBase>::query##TypeOperation##Operation(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {\
+   typename TypeBase::QueryOperation::OperationEnvironment& env = (typename TypeBase::QueryOperation::OperationEnvironment&) aenv;\
+   env.resultAsRead().set##TypeOperation();                                                                       \
+   return true;                                                                                                   \
+}
+
+DefineOperation(Minus)
+DefineOperation(MinusSigned)
+DefineOperation(MinusAssign)
+DefineOperation(CompareLess)
+DefineOperation(CompareLessOrEqual)
+DefineOperation(CompareEqual)
+DefineOperation(CompareGreaterOrEqual)
+DefineOperation(CompareGreater)
+
+#undef DefineOperation
+
+}} // end of namespace Real::Approximate
+
+namespace Rational { namespace Approximate {
+   
+template <class TypeBase>
+bool
+TVirtualElement<TypeBase>::queryInverseCastOperation(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
+   typename TypeBase::QueryOperation::InverseCastOperationEnvironment& env = (typename TypeBase::QueryOperation::InverseCastOperationEnvironment&) aenv;
+   Operation::Type type = env.reference().getType();
+   if ((type >= Scalar::Rational::Operation::TCastChar) && (type <= Scalar::Rational::Operation::TCastUnsignedLong))
+      env.resultAsInteger().setCastRational();
+   else if ((type >= Scalar::Rational::Operation::TCastFloat) && (type <= Scalar::Rational::Operation::TCastLongDouble))
+      env.resultAsFloating().setCastRational();
+   else if (type == Scalar::Rational::Operation::TCastReal)
+      env.resultAsReal().setCastRational();
+   else if (type == Scalar::Rational::Operation::TCastMultiBit)
+      env.resultAsMultiBit().setCastRational();
+   else
+      { AssumeUncalled }
+   return true;
+}
+
+#define DefineOperation(TypeOperation)                                                                            \
+template <class TypeBase>                                                                                         \
+bool                                                                                                              \
+TVirtualElement<TypeBase>::query##TypeOperation##Operation(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {\
+   typename TypeBase::QueryOperation::OperationEnvironment& env = (typename TypeBase::QueryOperation::OperationEnvironment&) aenv;\
+   env.resultAsRational().set##TypeOperation();                                                                   \
+   return true;                                                                                                   \
+}
+
+DefineOperation(Minus)
+DefineOperation(MinusSigned)
+DefineOperation(MinusAssign)
+DefineOperation(CompareLess)
+DefineOperation(CompareLessOrEqual)
+DefineOperation(CompareEqual)
+DefineOperation(CompareGreaterOrEqual)
+DefineOperation(CompareGreater)
+
+#undef DefineOperation
+
+}} // end of namespace Rational::Approximate
+
+}} // end of namespace Analyzer::Scalar
+
+#endif // Analyzer_Scalar_Approximate_VirtualElementTemplate

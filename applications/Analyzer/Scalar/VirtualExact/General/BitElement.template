@@ -1,0 +1,99 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : BitElement.template
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Implementation of a bit class used in simulation/symbolic execution.
+//   All this stuff is rather defined for host independent code analysis.
+//
+
+namespace Analyzer { namespace Scalar { namespace Bit { namespace VirtualExact {
+
+template <class TypeBase>
+bool
+TBitElement<TypeBase>::apply(const VirtualOperation& aoperation, EvaluationEnvironment& env) {
+   if (inherited::apply(aoperation, env))
+      return true;
+   const Operation& operation = (const Operation&) aoperation;
+   switch (operation.getType()) {
+      case Operation::TCastChar:
+         env.presult().absorbElement(TypeBase::createCharElement(
+            typename TypeBase::Init().absorbInitialValue(new Integer::Implementation
+               ::CharElement((char) fValue))));
+         return true;
+      case Operation::TCastInt: 
+         env.presult().absorbElement(TypeBase::createIntElement((int) fValue));
+         return true;
+      case Operation::TCastUnsignedInt: 
+         env.presult().absorbElement(TypeBase::createUnsignedIntElement(
+               typename TypeBase::Init().absorbInitialValue(new Integer::Implementation
+                  ::UnsignedIntElement((unsigned int) fValue))));
+         return true;
+      case Operation::TCastMultiBit: 
+         {  const MultiBit::CastMultiBitOperation& operation = (const MultiBit::CastMultiBitOperation&) aoperation;
+            typename TypeBase::Init init;
+            init.setBitSize(operation.getResultSize());
+            if (!operation.isSigned() || !fValue) 
+               env.presult().absorbElement(TypeBase::createMultiBitElement(init.absorbInitialValue(new
+                  Integer::Implementation::UnsignedIntElement((unsigned int) fValue))));
+            else
+               env.presult().absorbElement(TypeBase::createMultiBitElement(init.absorbInitialValue(new
+                  Integer::Implementation::IntElement(-1))));
+         }
+         return true;
+      case Operation::TPrevAssign: fValue = !fValue; return true;
+      case Operation::TNextAssign: fValue = !fValue; return true;
+      case Operation::TPlusAssign:
+         fValue = (bool) (fValue + ((const thisType&) env.getFirstArgument()).fValue);
+         return true;
+      case Operation::TMinusAssign: 
+         fValue = (bool) (fValue - ((const thisType&) env.getFirstArgument()).fValue);
+         return true;
+      case Operation::TCompareLess:
+         fValue = (fValue < ((const thisType&) env.getFirstArgument()).fValue);
+         return true;
+      case Operation::TCompareLessOrEqual: 
+         fValue = (fValue <= ((const thisType&) env.getFirstArgument()).fValue);
+         return true;
+      case Operation::TCompareEqual: 
+         fValue = (fValue == ((const thisType&) env.getFirstArgument()).fValue);
+         return true;
+      case Operation::TCompareDifferent: 
+         fValue = (fValue != ((const thisType&) env.getFirstArgument()).fValue);
+         return true;
+      case Operation::TCompareGreaterOrEqual: 
+         fValue = (fValue >= ((const thisType&) env.getFirstArgument()).fValue);
+         return true;
+      case Operation::TCompareGreater: 
+         fValue = (fValue > ((const thisType&) env.getFirstArgument()).fValue);
+         return true;
+      case Operation::TMinAssign: 
+         if (fValue > ((const thisType&) env.getFirstArgument()).fValue)
+            fValue = ((const thisType&) env.getFirstArgument()).fValue;
+         return true;
+      case Operation::TMaxAssign: 
+         if (fValue < ((const thisType&) env.getFirstArgument()).fValue)
+            fValue = ((const thisType&) env.getFirstArgument()).fValue;
+         return true;
+      case Operation::TOrAssign: 
+         fValue = (fValue || ((const thisType&) env.getFirstArgument()).fValue);
+         return true;
+      case Operation::TAndAssign: 
+         fValue = (fValue && ((const thisType&) env.getFirstArgument()).fValue);
+         return true;
+      case Operation::TExclusiveOrAssign: 
+         fValue = (fValue != ((const thisType&) env.getFirstArgument()).fValue);
+         return true;
+      case Operation::TNegateAssign: fValue = !fValue; return true;
+      default:
+         AssumeUncalled
+   };
+   return false;
+}
+
+}}}} // end of namespace Analyzer::Scalar::Bit::VirtualExact
+

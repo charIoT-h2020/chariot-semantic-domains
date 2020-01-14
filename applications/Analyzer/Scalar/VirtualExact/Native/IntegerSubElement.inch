@@ -1,0 +1,105 @@
+/////////////////////////////////
+//
+// Library   : Analyzer/Scalar
+// Unit      : scalar elements common to compilation constants and symbolic execution
+// File      : IntegerSubElement.inch
+// Author    : Franck Vedrine
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
+//
+// Description :
+//   Definition of integer classes that are very helpful to define
+//     the compilation constants and the scalar elements used in
+//     simulation/symbolic execution.
+//
+
+/* DefineTypeObject                  : Type of the element                                   */
+/* DefineTypeIntCastPromotion        : Cast operation into the natural integer type          */
+/* DefineTypeInheritedImplementation : Type of the inherited implementation                  */
+/* DefineTypeCastDegradation         : Cast operation enabling to retrieve the original type */
+
+template <class TypeBase>
+class DefineTypeObject : public TypeBase, private DefineTypeInheritedImplementation {
+  private:
+   typedef DefineTypeObject<TypeBase> thisType;
+   typedef DefineTypeInheritedImplementation inheritedImplementation;
+   typedef TypeBase inherited;
+
+   class MethodApplyTable;
+   #include "Analyzer/Scalar/VirtualExact/SimpleMethodTable.inch"
+
+   static MethodApplyTable matMethodTable;
+
+  protected:
+   virtual ComparisonResult _compare(const EnhancedObject& asource) const override
+      {  ComparisonResult result = inherited::_compare(asource);
+         return (result == CREqual)
+            ? inheritedImplementation::_compare((const inheritedImplementation&) castFromCopyHandler(asource))
+            : result;
+      }
+
+  public:
+   DefineTypeObject(const typename TypeBase::Init& init)
+      :  inherited(init),
+         inheritedImplementation((const inheritedImplementation&) init.getInitialValue())
+      {  AssumeCondition(dynamic_cast<const inheritedImplementation*>(&init.getInitialValue())) }
+   DefineTypeObject(const thisType& source) = default;
+   thisType& operator=(const thisType& source) = default;
+   TemplateDefineCopy(DefineTypeObject, TypeBase)
+   DTemplateDefineAssign(DefineTypeObject, TypeBase)
+   DTemplateCompare(DefineTypeObject, TypeBase)
+   StaticInheritConversions(thisType, inherited)
+
+   virtual bool isInt() const override { return true; }
+   virtual bool isValid() const override { return inherited::isValid() && inheritedImplementation::isValid(); }
+
+   // atomic methods
+   const inheritedImplementation& implementation() const
+      { return (const inheritedImplementation&) *this; }
+   virtual bool apply(const VirtualOperation& operation, EvaluationEnvironment& env) override
+      {  if (!inherited::apply(operation, env)
+            && !matMethodTable[((const Operation&) operation).getType()].execute(*this,
+               (const Operation&) operation, env))
+            {  AssumeUncalled }
+         return true;
+      }
+
+   #include "Analyzer/Scalar/VirtualExact/Native/CastInteger.inch"
+
+   virtual typename inherited::ZeroResult queryZeroResult() const override
+      {  return typename inherited::ZeroResult().setBool(inheritedImplementation::getElement()); }
+   virtual int _getSizeInBits() const override
+      {  return sizeof(typename inheritedImplementation::SimulatedType)*8; }
+
+   bool applyPromotedOperation(const Operation& operation, EvaluationEnvironment& env)
+      {  bool result = apply(DefineTypeIntCastPromotion(), env);
+         PPAbstractElement promotion = env.presult();
+         return result && promotion->apply(operation, env);
+      }
+   bool applyPromotedAssignOperation(const Operation& operation, EvaluationEnvironment& env)
+      {  bool result = apply(DefineTypeIntCastPromotion(), env);
+         PPAbstractElement promotion = env.presult();
+         if (result && promotion->apply(operation, env)) {
+            if (env.hasResult())
+               promotion = env.presult();
+            return promotion->apply(DefineTypeCastDegradation(), env);
+         };
+         return false;
+      }
+
+   DefineDeclareUnaryMethod(PrevAssign)
+   DefineDeclareUnaryMethod(NextAssign)
+   DefineDeclareBinaryMethod(PlusAssign)
+   DefineDeclareBinaryMethod(MinusAssign)
+   DefineDeclareBinaryMethod(TimesAssign)
+   DefineDeclareBinaryMethod(DivideAssign)
+   DefineDeclareUnaryMethod(Opposite)
+   DefineDeclareUnaryMethod(OppositeAssign)
+   DefineDeclareBinaryMethod(ModuloAssign)
+   DefineDeclareBinaryMethod(BitOrAssign)
+   DefineDeclareBinaryMethod(BitAndAssign)
+   DefineDeclareBinaryMethod(BitExclusiveOrAssign)
+   DefineDeclareUnaryMethod(BitNegateAssign)
+   DefineDeclareOBinaryMethod(LeftShiftAssign, IntElement)
+   DefineDeclareOBinaryMethod(RightShiftAssign, IntElement)
+};
+
