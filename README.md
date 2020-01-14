@@ -1,5 +1,5 @@
-CharIoT formal decoder armv7
-============================
+CharIoT arithmetic domain propagation
+=====================================
 
 The domsec library provides arithmetic manipulation for abstract domains:
 intervals, singleton, disjunctions of elements, symbolic domains.
