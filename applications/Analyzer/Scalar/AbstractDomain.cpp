@@ -1293,6 +1293,26 @@ domain_multibit_create_cast_shift_bit(DomainMultiBitElement multibitDomain,
    return DomainElement{result.extractElement()};
 }
 
+DLL_API DomainBitElement
+domain_multibit_create_cast_multibit(DomainMultiBitElement multibitDomain,
+      int destinationSizeInBits, bool isSigned, DomainEvaluationEnvironment* env) {
+   if (!sharedEvaluationEnvironment.get())
+      sharedEvaluationEnvironment.reset(ApproximateAccessEnvironment().createEnvironment(
+            Scalar::EvaluationEnvironment::Init()));
+   EvaluationEnvironment::GuardLatticeCreation guard(*sharedEvaluationEnvironment);
+   sharedEvaluationEnvironment->setLatticeCreation(EvaluationEnvironment::LatticeCreation
+         ((EvaluationEnvironment::LatticeCreation::Creation) env->defaultDomainType));
+   VirtualElement* element = reinterpret_cast<VirtualElement*>(multibitDomain.content);
+   PPVirtualElement result = VirtualElement::Methods::apply(*element, Analyzer::Scalar::MultiBit
+         ::CastMultiBitOperation().setSize(destinationSizeInBits).setSigned(isSigned),
+         *sharedEvaluationEnvironment);
+   env->warnings = sharedEvaluationEnvironment->getErrorCode();
+   env->emptyResult = sharedEvaluationEnvironment->isEmpty();
+   env->verdict = (DomainTypeVerdict) sharedEvaluationEnvironment->getVerdict().verdict();
+   sharedEvaluationEnvironment->clear();
+   return DomainElement{result.extractElement()};
+}
+
 DLL_API DomainMultiFloatElement
 domain_multibit_create_cast_multifloat(DomainMultiBitElement multibitDomain, int sizeInBits,
       bool isSigned, DomainEvaluationEnvironment* env) {
@@ -1383,6 +1403,11 @@ domain_multibit_unary_apply_assign(DomainMultiBitElement* multibitDomain,
       multibitOperation.setType((Operation::Type) ((operation-DMBUOOppositeSigned) + Operation::TOppositeSignedAssign));
    else if (operation == DMBUOBitNegate)
       multibitOperation.setType(Operation::TBitNegateAssign);
+   else if (operation == DMBUOBitScanReverse) {
+      element = Scalar::Details::IntOperationElement::Methods::newTop(*element);
+      sharedEvaluationEnvironment->clear();
+      return true;
+   }
    else
       {  AssumeUncalled }
    element = VirtualElement::Methods::applyAssign(element, multibitOperation, *sharedEvaluationEnvironment);
@@ -2355,6 +2380,11 @@ domain_multifloat_unary_apply_assign(DomainMultiFloatElement* multifloatDomain,
       multifloatOperation.setType((Operation::Type) ((operation-DMFUOLog) + Operation::TLog));
    else if (operation >= DMFUOPow && operation <= DMFUOTanh)
       multifloatOperation.setType((Operation::Type) ((operation-DMFUOPow) + Operation::TPow));
+   else if (operation >= DMFUOSetToNaN && operation <= DMFUOSetQuietBit) {
+      element = Scalar::Details::IntOperationElement::Methods::newTop(*element);
+      sharedEvaluationEnvironment->clear();
+      return true;
+   }
    else
       {  AssumeUncalled }
    element = VirtualElement::Methods::applyAssign(element, multifloatOperation, *sharedEvaluationEnvironment);
@@ -2401,6 +2431,27 @@ DLL_API DomainMultiFloatElement domain_multifloat_create_unary_apply(
    env->emptyResult = sharedEvaluationEnvironment->isEmpty();
    env->verdict = (DomainTypeVerdict) sharedEvaluationEnvironment->getVerdict().verdict();
    sharedEvaluationEnvironment->clear();
+   return DomainElement{result.extractElement()};
+}
+
+DLL_API DomainBitElement
+domain_multifloat_flush_to_zero(DomainMultiFloatElement* multifloatDomain,
+      DomainEvaluationEnvironment* env) {
+   typedef Analyzer::Scalar::Floating::Operation Operation;
+   if (!sharedEvaluationEnvironment.get())
+      sharedEvaluationEnvironment.reset(ApproximateAccessEnvironment().createEnvironment(
+            Scalar::EvaluationEnvironment::Init()));
+   EvaluationEnvironment::GuardLatticeCreation guard(*sharedEvaluationEnvironment);
+   sharedEvaluationEnvironment->setLatticeCreation(EvaluationEnvironment::LatticeCreation
+         ((EvaluationEnvironment::LatticeCreation::Creation) env->defaultDomainType));
+   PPVirtualElement element(reinterpret_cast<VirtualElement*>(multifloatDomain->content), PNT::Pointer::Init());
+   multifloatDomain->content = nullptr;
+   element = Scalar::Details::IntOperationElement::Methods::newTop(*element);
+   multifloatDomain->content = element.extractElement();
+   sharedEvaluationEnvironment->clear();
+   PPVirtualElement result = ApproximateAccessEnvironment().newBitConstant(false);
+   typedef Analyzer::Scalar::Bit::Approximate::Details::BitElement BitElement;
+   result = BitElement::Methods::newTop(*result);
    return DomainElement{result.extractElement()};
 }
 
@@ -2542,6 +2593,12 @@ domain_multifloat_binary_compare_domain(DomainMultiFloatElement multifloatDomain
    return DomainElement{result.extractElement()};
 }
 
+DLL_API DomainMultiBitElement
+domain_multifloat_binary_full_compare_domain(DomainMultiFloatElement multifloatDomain,
+      DomainMultiFloatElement sourceMultifloatDomain, DomainEvaluationEnvironment* env) {
+   AssumeUnimplemented
+}
+
 DLL_API DomainMultiFloatElement
 domain_multifloat_guard_assign(DomainBitElement* conditionDomain, DomainMultiFloatElement* firstDomain,
       DomainMultiFloatElement* secondDomain, DomainEvaluationEnvironment* env) {
@@ -2609,6 +2666,14 @@ domain_multifloat_ternary_apply_assign(DomainMultiFloatElement* multifloatDomain
    sharedEvaluationEnvironment->clear();
    return multifloatDomain->content != nullptr && !env->emptyResult;
 }
+
+DLL_API DomainBitElement
+domain_multifloat_ternary_query(DomainMultiFloatElement multifloatDomain,
+      DomainMultiFloatQueryOperation operation, DomainMultiFloatElement first,
+      DomainMultiFloatElement second, DomainEvaluationEnvironment* env) {
+   AssumeUnimplemented
+}
+
 
 DLL_API DomainMultiFloatElement domain_multifloat_create_ternary_apply(
       DomainMultiFloatElement multifloatDomain, DomainMultiFloatTernaryOperation operation,
