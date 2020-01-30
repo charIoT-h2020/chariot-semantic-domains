@@ -579,7 +579,7 @@ class WriteStream : public STG::IOObject::OSBase {
             return *this;
          AssumeCondition((*puBufferLength+1) < uBufferSize)
          szBuffer[(*puBufferLength)++] = ch;
-         szBuffer[(*puBufferLength)+1] = '\0';
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& write(int n, bool isRaw) override
@@ -596,7 +596,7 @@ class WriteStream : public STG::IOObject::OSBase {
             memcpy(&szBuffer[*puBufferLength], ssTemp.getChunk().string, ssTemp.length());
             *puBufferLength += ssTemp.length();
          };
-         szBuffer[(*puBufferLength)+1] = '\0';
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& writeHexa(int n) override
@@ -605,7 +605,7 @@ class WriteStream : public STG::IOObject::OSBase {
             return *this;
          memcpy(&szBuffer[*puBufferLength], ssTemp.getChunk().string, ssTemp.length());
          *puBufferLength += ssTemp.length();
-         szBuffer[(*puBufferLength)+1] = '\0';
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& write(unsigned int n, bool isRaw) override
@@ -622,7 +622,7 @@ class WriteStream : public STG::IOObject::OSBase {
             memcpy(&szBuffer[*puBufferLength], ssTemp.getChunk().string, ssTemp.length());
             *puBufferLength += ssTemp.length();
          };
-         szBuffer[(*puBufferLength)+1] = '\0';
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& writeHexa(unsigned int n) override
@@ -631,7 +631,7 @@ class WriteStream : public STG::IOObject::OSBase {
             return *this;
          memcpy(&szBuffer[*puBufferLength], ssTemp.getChunk().string, ssTemp.length());
          *puBufferLength += ssTemp.length();
-         szBuffer[(*puBufferLength)+1] = '\0';
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& write(long int n, bool isRaw) override
@@ -648,7 +648,7 @@ class WriteStream : public STG::IOObject::OSBase {
             memcpy(&szBuffer[*puBufferLength], ssTemp.getChunk().string, ssTemp.length());
             *puBufferLength += ssTemp.length();
          };
-         szBuffer[(*puBufferLength)+1] = '\0';
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& writeHexa(long int n) override
@@ -657,7 +657,7 @@ class WriteStream : public STG::IOObject::OSBase {
             return *this;
          memcpy(&szBuffer[*puBufferLength], ssTemp.getChunk().string, ssTemp.length());
          *puBufferLength += ssTemp.length();
-         szBuffer[(*puBufferLength)+1] = '\0';
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& write(unsigned long int n, bool isRaw) override
@@ -674,7 +674,7 @@ class WriteStream : public STG::IOObject::OSBase {
             memcpy(&szBuffer[*puBufferLength], ssTemp.getChunk().string, ssTemp.length());
             *puBufferLength += ssTemp.length();
          };
-         szBuffer[(*puBufferLength)+1] = '\0';
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& writeHexa(unsigned long int n) override
@@ -683,7 +683,7 @@ class WriteStream : public STG::IOObject::OSBase {
             return *this;
          memcpy(&szBuffer[*puBufferLength], ssTemp.getChunk().string, ssTemp.length());
          *puBufferLength += ssTemp.length();
-         szBuffer[(*puBufferLength)+1] = '\0';
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& write(double f, bool isRaw) override
@@ -700,7 +700,7 @@ class WriteStream : public STG::IOObject::OSBase {
             memcpy(&szBuffer[*puBufferLength], ssTemp.getChunk().string, ssTemp.length());
             *puBufferLength += ssTemp.length();
          }
-         szBuffer[(*puBufferLength)+1] = '\0';
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& write(bool b, bool isRaw) override
@@ -708,7 +708,7 @@ class WriteStream : public STG::IOObject::OSBase {
             return *this;
          AssumeCondition((*puBufferLength+1) < uBufferSize)
          szBuffer[(*puBufferLength)++] = b ? '1' : '0';
-         szBuffer[(*puBufferLength)+1] = '\0';
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& write(const STG::VirtualStringProperty& source, bool isRaw) override
@@ -737,7 +737,7 @@ class WriteStream : public STG::IOObject::OSBase {
                *puBufferLength += chunk->length;
             } while (source.setToNextChunk());
          };
-         szBuffer[(*puBufferLength)+1] = '\0';
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& writeall(const STG::VirtualStringProperty& source) override
@@ -749,14 +749,18 @@ class WriteStream : public STG::IOObject::OSBase {
                   return *this;
                memcpy(&szBuffer[*puBufferLength], chunk->string, chunk->length);
                *puBufferLength += chunk->length;
+               szBuffer[*puBufferLength] = '\0';
             } while (source.setToNextChunk());
          };
          return *this;
       }
    virtual OSBase& writechunk(void* achunk) override
       {  STG::TChunk<char>& chunk = *((STG::TChunk<char>*) achunk);
+         if (!szBuffer || !realloc(chunk.length))
+            return *this;
          memcpy(&szBuffer[*puBufferLength], chunk.string, chunk.length);
          *puBufferLength += chunk.length;
+         szBuffer[*puBufferLength] = '\0';
          return *this;
       }
    virtual OSBase& flush() override { return *this; }
