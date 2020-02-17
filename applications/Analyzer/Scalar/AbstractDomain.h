@@ -138,21 +138,20 @@ typedef enum _DomainMultiFloatUnaryOperation
 {
    DMFUOUndefined, DMFUOCastFloat, DMFUOCastDouble, DMFUOOpposite, DMFUOAbs,
    DMFUOAcos, DMFUOAsin, DMFUOAtan, DMFUOCeil, DMFUOCos, DMFUOCosh, DMFUOExp, DMFUOFabs, DMFUOFloor,
-      DMFUOLog, DMFUOLog10, DMFUOPow, DMFUOSin, DMFUOSinh, DMFUOSqrt, DMFUOTan, DMFUOTanh,
+      DMFUOLog, DMFUOLog10, DMFUOSin, DMFUOSinh, DMFUOSqrt, DMFUOTan, DMFUOTanh,
    DMFUOSetToNaN, DMFUOSetQuietBit
 } DomainMultiFloatUnaryOperation;
 
 typedef enum _DomainMultiFloatBinaryOperation
 {
    DMFBOUndefined, DMFBOPlus, DMFBOMinus, DMFBOMin, DMFBOMax, DMFBOTimes, DMFBODivide,
-   DMFBOAtan2, DMFBOFmod, DMFBOFrexp, DMFBOLdexp, DMFBOModf
+   DMFBOPow, DMFBOAtan2, DMFBOFmod, DMFBOFrexp, DMFBOLdexp, DMFBOModf
 } DomainMultiFloatBinaryOperation;
 
 typedef enum _DomainMultiFloatCompareOperation
 {
    DMFCOUndefined, DMFCOCompareLess, DMFCOCompareLessOrEqual, DMFCOCompareEqual, DMFCOCompareDifferent,
       DMFCOCompareGreaterOrEqual, DMFCOCompareGreater,
-   DMFCOMultAdd, DMFCOMultSub, DMFCONegMultAdd, DMFCONegMultSub,
 } DomainMultiFloatCompareOperation;
 
 typedef enum _DomainMultiFloatTernaryOperation

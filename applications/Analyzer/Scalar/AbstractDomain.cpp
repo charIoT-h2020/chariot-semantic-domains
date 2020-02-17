@@ -2382,8 +2382,8 @@ domain_multifloat_unary_apply_assign(DomainMultiFloatElement* multifloatDomain,
       multifloatOperation.setType((Operation::Type) ((operation-DMFUOCeil) + Operation::TFloor));
    else if (operation >= DMFUOLog && operation <= DMFUOLog10)
       multifloatOperation.setType((Operation::Type) ((operation-DMFUOLog) + Operation::TLog));
-   else if (operation >= DMFUOPow && operation <= DMFUOTanh)
-      multifloatOperation.setType((Operation::Type) ((operation-DMFUOPow) + Operation::TPow));
+   else if (operation >= DMFUOSin && operation <= DMFUOTanh)
+      multifloatOperation.setType((Operation::Type) ((operation-DMFUOSin) + Operation::TSin));
    else if (operation >= DMFUOSetToNaN && operation <= DMFUOSetQuietBit) {
       element = Scalar::Details::IntOperationElement::Methods::newTop(*element);
       sharedEvaluationEnvironment->clear();
@@ -2424,8 +2424,8 @@ DLL_API DomainMultiFloatElement domain_multifloat_create_unary_apply(
       multifloatOperation.setType((Operation::Type) ((operation-DMFUOCeil) + Operation::TFloor));
    else if (operation >= DMFUOLog && operation <= DMFUOLog10)
       multifloatOperation.setType((Operation::Type) ((operation-DMFUOLog) + Operation::TLog));
-   else if (operation >= DMFUOPow && operation <= DMFUOTanh)
-      multifloatOperation.setType((Operation::Type) ((operation-DMFUOPow) + Operation::TPow));
+   else if (operation >= DMFUOSin && operation <= DMFUOTanh)
+      multifloatOperation.setType((Operation::Type) ((operation-DMFUOSin) + Operation::TSin));
    else
       {  AssumeUncalled }
    multifloatOperation.setConstWithAssign();
@@ -2480,6 +2480,8 @@ domain_multifloat_binary_apply_assign(DomainMultiFloatElement* multifloatDomain,
       multifloatOperation.setType((Operation::Type) ((operation-DMFBOPlus) + Operation::TPlusAssign));
    else if (operation >= DMFBOMin && operation <= DMFBODivide)
       multifloatOperation.setType((Operation::Type) ((operation-DMFBOMin) + Operation::TMinAssign));
+   else if (operation == DMFBOPow)
+      multifloatOperation.setType(Operation::TPow);
    else if (operation == DMFBOAtan2)
       multifloatOperation.setType(Operation::TAtan2);
    else if (operation >= DMFBOFmod && operation <= DMFBOLdexp)
@@ -2518,6 +2520,8 @@ domain_multifloat_create_binary_apply(DomainMultiFloatElement multifloatDomain,
       multifloatOperation.setType((Operation::Type) ((operation-DMFBOPlus) + Operation::TPlusAssign));
    else if (operation >= DMFBOMin && operation <= DMFBODivide)
       multifloatOperation.setType((Operation::Type) ((operation-DMFBOMin) + Operation::TMinAssign));
+   else if (operation == DMFBOPow)
+      multifloatOperation.setType(Operation::TPow);
    else if (operation == DMFBOAtan2)
       multifloatOperation.setType(Operation::TAtan2);
    else if (operation >= DMFBOFmod && operation <= DMFBOLdexp)
@@ -2677,7 +2681,6 @@ domain_multifloat_ternary_query(DomainMultiFloatElement multifloatDomain,
       DomainMultiFloatElement second, DomainEvaluationEnvironment* env) {
    AssumeUnimplemented
 }
-
 
 DLL_API DomainMultiFloatElement domain_multifloat_create_ternary_apply(
       DomainMultiFloatElement multifloatDomain, DomainMultiFloatTernaryOperation operation,
@@ -2853,8 +2856,8 @@ domain_multifloat_unary_constraint(DomainMultiFloatElement resultDomain,
       multifloatOperation.setType((Operation::Type) ((operation-DMFUOCeil) + Operation::TFloor));
    else if (operation >= DMFUOLog && operation <= DMFUOLog10)
       multifloatOperation.setType((Operation::Type) ((operation-DMFUOLog) + Operation::TLog));
-   else if (operation >= DMFUOPow && operation <= DMFUOTanh)
-      multifloatOperation.setType((Operation::Type) ((operation-DMFUOPow) + Operation::TPow));
+   else if (operation >= DMFUOSin && operation <= DMFUOTanh)
+      multifloatOperation.setType((Operation::Type) ((operation-DMFUOSin) + Operation::TSin));
    else
       {  AssumeUncalled }
    bool booleanResult = element->constraint(multifloatOperation, *result, *sharedConstraintEnvironment);
@@ -2895,6 +2898,8 @@ domain_multifloat_binary_constraint(DomainMultiFloatElement resultDomain,
       multifloatOperation.setType((Operation::Type) ((operation-DMFBOPlus) + Operation::TPlusAssign));
    else if (operation >= DMFBOMin && operation <= DMFBODivide)
       multifloatOperation.setType((Operation::Type) ((operation-DMFBOMin) + Operation::TMinAssign));
+   else if (operation == DMFBOPow)
+      multifloatOperation.setType(Operation::TPow);
    else if (operation == DMFBOAtan2)
       multifloatOperation.setType(Operation::TAtan2);
    else if (operation >= DMFBOFmod && operation <= DMFBOLdexp)
