@@ -3105,6 +3105,14 @@ domain_contain(DomainElement domain, DomainElement sourceDomain,
    return copyEnv.isTotalApplied();
 }
 
+DLL_API int
+domain_compare(DomainElement domain, DomainElement sourceDomain) {
+   const VirtualElement* element = reinterpret_cast<VirtualElement*>(domain.content);
+   const VirtualElement* source = reinterpret_cast<VirtualElement*>(sourceDomain.content);
+   AssumeCondition(element && source)
+   return element->compare(*source);
+}
+
 DLL_API DomainElement
 domain_create_disjunction_and_absorb(DomainElement* domain) {
    VirtualElement* element = reinterpret_cast<VirtualElement*>(domain->content);

@@ -413,6 +413,7 @@ DLL_API bool domain_intersect(DomainElement* element, DomainElement source,
       DomainEvaluationEnvironment* env);
 DLL_API bool domain_contain(DomainElement element, DomainElement source,
       DomainEvaluationEnvironment* env);
+DLL_API bool domain_compare(DomainElement element, DomainElement source);
 DLL_API DomainElement domain_create_disjunction_and_absorb(DomainElement* element);
 DLL_API void domain_disjunction_absorb(DomainElement* disjunction, DomainElement* element);
 DLL_API void domain_specialize(DomainElement* element);
