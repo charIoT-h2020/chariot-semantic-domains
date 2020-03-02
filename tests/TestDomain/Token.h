@@ -69,7 +69,7 @@ class NumberToken : public AbstractToken {
    enum Coding { CDecimal, CBit, COctal, CHexaDecimal };
 
   protected:
-   DefineExtendedParameters(4, AbstractToken)
+   DefineExtendedParameters(3, AbstractToken)
    DefineSubExtendedParameters(BasicType, 1, INHERITED)
    DefineSubExtendedParameters(IntegerExtension, 1, BasicType)
    DefineSubExtendedParameters(Coding, 2, IntegerExtension)

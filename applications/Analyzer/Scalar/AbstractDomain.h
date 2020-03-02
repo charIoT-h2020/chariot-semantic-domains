@@ -214,6 +214,7 @@ typedef enum _DomainType { DTUndefined, DTBit, DTInteger, DTFloating } DomainTyp
 DLL_API DomainType domain_get_type(DomainElement domain);
 DLL_API ZeroResult domain_query_zero_result(DomainElement domain);
 DLL_API int domain_get_size_in_bits(DomainElement domain);
+DLL_API bool domain_is_top(DomainElement domain);
 DLL_API void domain_free(DomainElement* element);
 DLL_API DomainElement domain_clone(DomainElement element);
 

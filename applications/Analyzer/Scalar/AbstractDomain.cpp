@@ -784,6 +784,13 @@ domain_get_size_in_bits(DomainElement domain) {
    return element->getSizeInBits();
 }
 
+DLL_API bool
+domain_is_top(DomainElement domain) {
+   VirtualElement* element = reinterpret_cast<VirtualElement*>(domain.content);
+   assert(element);
+   return element->getApproxKind().isTop();
+}
+
 DLL_API ZeroResult
 domain_query_zero_result(DomainElement domain) {
    VirtualElement* element = reinterpret_cast<VirtualElement*>(domain.content);
@@ -2441,7 +2448,7 @@ DLL_API DomainMultiFloatElement domain_multifloat_create_unary_apply(
 DLL_API DomainBitElement
 domain_multifloat_flush_to_zero(DomainMultiFloatElement* multifloatDomain,
       DomainEvaluationEnvironment* env) {
-   typedef Analyzer::Scalar::Floating::Operation Operation;
+   // typedef Analyzer::Scalar::Floating::Operation Operation;
    if (!sharedEvaluationEnvironment.get())
       sharedEvaluationEnvironment.reset(ApproximateAccessEnvironment().createEnvironment(
             Scalar::EvaluationEnvironment::Init()));
