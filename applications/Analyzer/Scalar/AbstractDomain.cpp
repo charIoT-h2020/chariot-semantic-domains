@@ -3051,6 +3051,9 @@ DLL_API bool domain_merge(DomainElement* domain, DomainElement sourceDomain,
    VirtualElement* element = reinterpret_cast<VirtualElement*>(domain->content);
    VirtualElement* source = reinterpret_cast<VirtualElement*>(sourceDomain.content);
    AssumeCondition(element && source)
+   if (!sharedEvaluationEnvironment.get())
+      sharedEvaluationEnvironment.reset(ApproximateAccessEnvironment().createEnvironment(
+            Scalar::EvaluationEnvironment::Init()));
    {  Analyzer::Scalar::Approximate::TransmitEnvironment copyEnv(*sharedEvaluationEnvironment);
       bool boolResult = element->mergeWith(*source, copyEnv);
       AssumeCondition(boolResult)
@@ -3078,6 +3081,9 @@ domain_intersect(DomainElement* domain, DomainElement sourceDomain,
    VirtualElement* element = reinterpret_cast<VirtualElement*>(domain->content);
    VirtualElement* source = reinterpret_cast<VirtualElement*>(sourceDomain.content);
    AssumeCondition(element && source)
+   if (!sharedEvaluationEnvironment.get())
+      sharedEvaluationEnvironment.reset(ApproximateAccessEnvironment().createEnvironment(
+            Scalar::EvaluationEnvironment::Init()));
    {  Analyzer::Scalar::Approximate::TransmitEnvironment copyEnv(*sharedEvaluationEnvironment);
       bool boolResult = element->intersectWith(*source, copyEnv);
       AssumeCondition(boolResult)
@@ -3105,6 +3111,9 @@ domain_contain(DomainElement domain, DomainElement sourceDomain,
    const VirtualElement* element = reinterpret_cast<VirtualElement*>(domain.content);
    const VirtualElement* source = reinterpret_cast<VirtualElement*>(sourceDomain.content);
    AssumeCondition(element && source)
+   if (!sharedEvaluationEnvironment.get())
+      sharedEvaluationEnvironment.reset(ApproximateAccessEnvironment().createEnvironment(
+            Scalar::EvaluationEnvironment::Init()));
    Analyzer::Scalar::Approximate::EvaluationEnvironment copyEnv = Analyzer::Scalar::Approximate::EvaluationEnvironment(
       VirtualElement::EvaluationParameters(*sharedEvaluationEnvironment));
    bool boolResult = element->contain(*source, copyEnv);
