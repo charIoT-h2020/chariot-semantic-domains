@@ -4,7 +4,7 @@
 // Unit      : approximate scalar elements
 // File      : ConstantMultiBitShare.cpp
 // Author    : Franck Vedrine
-// Copyright : CEA LIST - 2019-2020 - all rights reserved
+// Copyright : CEA LIST - 2009 - 2010, 2014
 //
 // Description :
 //   Implementation of an approximated integer class for multibit operations
@@ -1956,13 +1956,24 @@ CompareOperationElement::intersectWith(const VirtualElement& asource, Evaluation
 bool
 CompareOperationElement::applyCastMultiBit(const VirtualOperation& aoperation, EvaluationEnvironment& env) {
    const CastMultiBitOperation& operation = (const CastMultiBitOperation&) aoperation;
-   AssumeCondition(operation.getResultSize() == 1)
+   AssumeCondition(operation.getResultSize() >= 1)
    typedef MultiBit::Approximate::CompareOperationElement CompareOperationElement;
    auto* result = new CompareOperationElement((const CompareOperationElement::Init&)
          CompareOperationElement::Init().set1(), ((const MultiBitOperation&) getOperation()).getType());
    env.presult().absorbElement(result);
    result->sfstArg().setElement(fstArg());
    result->ssndArg().setElement(sndArg());
+   if (operation.getResultSize() > 1) {
+      PPVirtualElement compare = env.presult();
+      MultiBit::Approximate::ExtendOperationElement* result;
+      {  MultiBit::Approximate::ExtendOperationElement::Init init;
+         init.setBitSize(operation.getResultSize());
+         init.setUnsignedExtension(operation.getResultSize()-1);
+         result = new MultiBit::Approximate::ExtendOperationElement(init);
+      };
+      env.presult().absorbElement(result);
+      result->sfstArg() = compare;
+   }
    return true;
 }
 
