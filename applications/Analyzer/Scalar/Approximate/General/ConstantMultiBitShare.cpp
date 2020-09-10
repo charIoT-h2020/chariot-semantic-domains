@@ -4,7 +4,7 @@
 // Unit      : approximate scalar elements
 // File      : ConstantMultiBitShare.cpp
 // Author    : Franck Vedrine
-// Copyright : CEA LIST - 2009 - 2010, 2014
+// Copyright : CEA LIST - 2019-2020 - all rights reserved
 //
 // Description :
 //   Implementation of an approximated integer class for multibit operations
@@ -25,6 +25,8 @@ namespace Analyzer {}
 #include "Analyzer/Scalar/Approximate/MethodTable.template"
 
 namespace Analyzer { namespace Scalar { namespace Approximate {
+
+int VirtualExactToApproximateElement::SharedApproximate::uSharedIdentifier = 0; // [TODO] not reentrant
 
 PPVirtualElement
 VirtualExactToApproximateElement::simplify() {
@@ -93,7 +95,7 @@ VirtualExactToApproximateElement::mergeWith(const Scalar::VirtualElement& asourc
       const VirtualElement& source = (const VirtualElement&) asource;
       if (source.getType().isVariable()) {
          AssumeCondition(dynamic_cast<const VirtualExactToApproximateElement*>(&source))
-         VirtualExactToApproximateElement& exactSource = (VirtualExactToApproximateElement&) source;
+         auto& exactSource = const_cast<VirtualExactToApproximateElement&>((const VirtualExactToApproximateElement&) source);
          if (sapDomain == exactSource.sapDomain)
             return true;
          assumeSingle();
@@ -120,7 +122,7 @@ VirtualExactToApproximateElement::contain(const Scalar::VirtualElement& asource,
       EvaluationEnvironment& env = (EvaluationEnvironment&) aenv;
       if (source.getType().isVariable()) {
          AssumeCondition(dynamic_cast<const VirtualExactToApproximateElement*>(&source))
-         const VirtualExactToApproximateElement& exactSource = (VirtualExactToApproximateElement&) source;
+         const auto& exactSource = (const VirtualExactToApproximateElement&) source;
          if (sapDomain == exactSource.sapDomain)
             return true;
          result = sapDomain->shared().contain(exactSource.sapDomain->shared(), env);
@@ -146,7 +148,7 @@ VirtualExactToApproximateElement::intersectWith(const VirtualElement& source, Ev
    if (!result) {
       if (source.getType().isVariable()) {
          AssumeCondition(dynamic_cast<const VirtualExactToApproximateElement*>(&source))
-         VirtualExactToApproximateElement& exactSource = (VirtualExactToApproximateElement&) source;
+         auto& exactSource = const_cast<VirtualExactToApproximateElement&>((const VirtualExactToApproximateElement&) source);
          if (sapDomain == exactSource.sapDomain)
             return true;
          if (!env.isTopLevel()) {
@@ -458,27 +460,31 @@ namespace Details {
 
 template <class TypeBase>
 void
-TCompareOperationElement<TypeBase>::_write(STG::IOObject::OSBase& out, const STG::IOObject::FormatParameters& params) const {
+TCompareOperationElement<TypeBase>::_write(STG::IOObject::OSBase& out, const STG::IOObject::FormatParameters& aparams) const {
+   const auto& params = (const typename inherited::FormatParameters&) aparams;
+   const char* extendFloat = !params.isDeterministic() ? "float" : "F";
+   const char* extendSigned = !params.isDeterministic() ? "signed" : "S";
+   const char* extendUnsigned = !params.isDeterministic() ? "unsigned" : "U";
    out.put('(');
    fstArg().write(out, params);
    out.put(' ');
    switch (((const MultiBitOperation&) inherited::getOperation()).getType()) {
-      case MultiBitOperation::TCompareLessSigned: out << "<signed"; break;
-      case MultiBitOperation::TCompareLessOrEqualSigned: out << "<=signed"; break;
-      case MultiBitOperation::TCompareLessUnsigned: out << "<unsigned"; break;
-      case MultiBitOperation::TCompareLessOrEqualUnsigned: out << "<=unsigned"; break;
-      case MultiBitOperation::TCompareLessFloat: out << "<float"; break;
-      case MultiBitOperation::TCompareLessOrEqualFloat: out << "<=float"; break;
+      case MultiBitOperation::TCompareLessSigned: out << "<" << extendSigned; break;
+      case MultiBitOperation::TCompareLessOrEqualSigned: out << "<=" << extendSigned; break;
+      case MultiBitOperation::TCompareLessUnsigned: out << "<" << extendUnsigned; break;
+      case MultiBitOperation::TCompareLessOrEqualUnsigned: out << "<=" << extendUnsigned; break;
+      case MultiBitOperation::TCompareLessFloat: out << "<" << extendFloat; break;
+      case MultiBitOperation::TCompareLessOrEqualFloat: out << "<=" << extendFloat; break;
       case MultiBitOperation::TCompareEqual: out << "=="; break;
-      case MultiBitOperation::TCompareEqualFloat: out << "==float"; break;
-      case MultiBitOperation::TCompareDifferentFloat: out << "!=float"; break;
+      case MultiBitOperation::TCompareEqualFloat: out << "==" << extendFloat; break;
+      case MultiBitOperation::TCompareDifferentFloat: out << "!=" << extendFloat; break;
       case MultiBitOperation::TCompareDifferent: out << "!="; break;
-      case MultiBitOperation::TCompareGreaterOrEqualFloat: out << ">=float"; break;
-      case MultiBitOperation::TCompareGreaterFloat: out << ">float"; break;
-      case MultiBitOperation::TCompareGreaterOrEqualUnsigned: out << ">=unsigned"; break;
-      case MultiBitOperation::TCompareGreaterUnsigned: out << ">unsigned"; break;
-      case MultiBitOperation::TCompareGreaterOrEqualSigned: out << ">=signed"; break;
-      case MultiBitOperation::TCompareGreaterSigned: out << ">signed"; break;
+      case MultiBitOperation::TCompareGreaterOrEqualFloat: out << ">=" << extendFloat; break;
+      case MultiBitOperation::TCompareGreaterFloat: out << ">" << extendFloat; break;
+      case MultiBitOperation::TCompareGreaterOrEqualUnsigned: out << ">=" << extendUnsigned; break;
+      case MultiBitOperation::TCompareGreaterUnsigned: out << ">" << extendUnsigned; break;
+      case MultiBitOperation::TCompareGreaterOrEqualSigned: out << ">=" << extendSigned; break;
+      case MultiBitOperation::TCompareGreaterSigned: out << ">" << extendSigned; break;
       default: { AssumeUncalled }
    };
    out.put(' ');

@@ -99,12 +99,23 @@ class IntegerInterval : public VirtualIntegerInterval {
       }
 
   protected:
-   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& params) const override
-      {  out << "Interval " << (hasUnsignedField() ? "unsigned" : "signed") << "[";
-         ppveMin->write(out, params);
-         out << ", ";
-         ppveMax->write(out, params);
-         out.put(']');
+   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& aparams) const override
+      {  const FormatParameters& params = (const FormatParameters&) aparams;
+         if (!params.isDeterministic()) {
+            out << "Interval " << (hasUnsignedField() ? "unsigned" : "signed") << "[";
+            ppveMin->write(out, params);
+            out << ", ";
+            ppveMax->write(out, params);
+            out.put(']');
+         }
+         else {
+            out.put('[');
+            ppveMin->write(out, params);
+            out << ", ";
+            ppveMax->write(out, params);
+            out.put(']');
+            out.put(hasUnsignedField() ? 'U' : 'S');
+         }
       }
    virtual int _getSizeInBits() const override { return ppveMin->getSizeInBits(); }
   

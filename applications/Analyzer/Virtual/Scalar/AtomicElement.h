@@ -123,7 +123,7 @@ class AbstractElement : public STG::IOObject, public ExtendedParameters {
       FormatParameters& setOneLine() { mergeOneLineField(1); return *this; }
       bool isOneLine() const { return hasOneLineField(); }
       FormatParameters& setDeterministic() { mergeDeterministicField(1); return *this; }
-      bool isDeterminitic() const { return hasDeterministicField(); }
+      bool isDeterministic() const { return hasDeterministicField(); }
    };
    class Methods;
 };

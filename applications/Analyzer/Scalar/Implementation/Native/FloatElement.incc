@@ -39,9 +39,9 @@ DefineTypeCastAssign
 
 class DefineTypeFloatElement::Utilities {
   public:
-   static const DefineTypeImplementation MAX() { return DefineTypeMax; }
-   static const DefineTypeImplementation MIN()  { return DefineTypeMin; }
-   static const DefineTypeImplementation INF_MIN() { return DefineTypeMin*DefineTypeEpsilon; }
+   static constexpr DefineTypeImplementation MAX() { return DefineTypeMax; }
+   static constexpr DefineTypeImplementation MIN()  { return DefineTypeMin; }
+   static constexpr DefineTypeImplementation INF_MIN() { return DefineTypeMin*DefineTypeEpsilon; }
 
    static bool isNaN(const DefineTypeImplementation& element)
       {  if (!isInfinity(element))
@@ -84,6 +84,7 @@ class DefineTypeFloatElement::Utilities {
 #if defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshift-count-negative"
+#pragma GCC diagnostic ignored "-Wshift-count-overflow"
 #endif
 #if defined(__GNUC__) && !defined(__clang__)
             result = (int) ((mask[0] & (LONG_MAX)) >> lowMaskShift);

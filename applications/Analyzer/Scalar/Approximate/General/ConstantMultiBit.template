@@ -1734,7 +1734,7 @@ TConstantElement<TypeImplementation>::constraintPlusUnsignedWithSignedAssignWith
       const VirtualOperation&, VirtualElement& sourceElement, const VirtualElement& resultElement,
       Argument arg, ConstraintEnvironment& env) {
    AssumeCondition(dynamic_cast<const thisType*>(&resultElement))
-   thisType& result = (thisType&) resultElement;
+   const thisType& result = (const thisType&) resultElement;
    env.mergeVerdictExact();
    PPVirtualElement argElement;
    if (arg.isResult()) { // a + b = x avec a et x constants
@@ -2150,7 +2150,7 @@ TTopCast<TypeRingTraits>::applyTo(const VirtualElement& topElement, VirtualEleme
    typedef Scalar::Approximate::Details::IntOperationElement::Methods Methods;
    AssumeCondition(dynamic_cast<const Top*>(&topElement))
    const Operation& operation = (const Operation&) aoperation;
-   Top* thisResult = &((Top&) topElement);
+   Top* thisResult = const_cast<Top*>(&((const Top&) topElement));
 
    Operation::Type type = operation.getType();
    if (type >= Operation::StartOfCompare && type < Operation::EndOfCompare)
@@ -2243,7 +2243,7 @@ TTopCast<TypeRingTraits>::applyTop(VirtualElement& topElement, const VirtualOper
          case Operation::TExtendWithZero: case Operation::TExtendWithSign:
             if (operation.isConstWithAssign())
                copy.absorbElement(thisResult = thisResult->createSCopy());
-            thisResult->addToSizeInBits(((ExtendOperation&) operation).getExtension());
+            thisResult->addToSizeInBits(((const ExtendOperation&) operation).getExtension());
             break;
          case Operation::TConcat:
             if (((const VirtualElement&) env.getFirstArgument()).getType().isTop()

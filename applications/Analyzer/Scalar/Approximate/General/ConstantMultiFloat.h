@@ -84,7 +84,8 @@ class Base : public TVirtualElement<Scalar::Approximate::Details::RealOperationE
 
   public:
    Base(const InitFloat& init) : inherited(init) {}
-   Base(const Base& source) : inherited(source) {}
+   Base(const Base& source) = default;
+   Base& operator=(const Base& source) = default;
 
    bool querySimplification(const QueryOperation&, QueryOperation::Environment& env) const;
    
@@ -148,9 +149,16 @@ class TMultiConstantElement : public Base, protected TypeImplementation {
       { return (VirtualElement&) env.getFirstArgument(); }
 
   protected:
-   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& params) const override
-      {  out << "Floating::MultiConstant ";
-         implementation().write(out, typename inheritedImplementation::WriteParameters().setDecimal());
+   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& aparams) const override
+      {  const FormatParameters& params = (const FormatParameters&) aparams;
+         if (!params.isDeterministic()) {
+            out << "Floating::MultiConstant ";
+            implementation().write(out, typename inheritedImplementation::WriteParameters().setDecimal());
+         }
+         else {
+            implementation().write(out, typename inheritedImplementation::WriteParameters().setDecimal());
+            out.put('_').write((int) getSizeInBits(), false);
+         }
       }
    virtual ComparisonResult _compare(const EnhancedObject& asource) const override
       {  ComparisonResult result = inherited::_compare(asource);

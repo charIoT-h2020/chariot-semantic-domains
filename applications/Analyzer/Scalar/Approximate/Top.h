@@ -61,8 +61,13 @@ class Top : public VirtualDisjunction {
    
   protected:
    virtual void _add(PPVirtualElement element, const InformationKind& kind) override {}
-   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& params) const override
-      {  out << "Top " << getSizeInBits(); }
+   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& aparams) const override
+      {  const FormatParameters& params = (const FormatParameters&) aparams;
+         if (!params.isDeterministic())
+            out << "Top " << getSizeInBits();
+         else
+            out << "Top_" << getSizeInBits();
+      }
    
   public:
    template <class TypeBase>

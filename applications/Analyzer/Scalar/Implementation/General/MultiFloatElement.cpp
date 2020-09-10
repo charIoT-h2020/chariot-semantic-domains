@@ -13,7 +13,7 @@
 #include "Analyzer/Scalar/Implementation/General/MultiFloatElement.h"
 // #include "Analyzer/Scalar/Scalar.hpp"
 
-namespace Analyzer {};
+namespace Analyzer {}
 
 #include "Analyzer/Scalar/Implementation/General/MultiFloatElement.template"
 

@@ -29,14 +29,19 @@ class VirtualExactToApproximateElement : public VirtualElement {
      private:
       typedef PNT::SharedElement inherited;
       PPVirtualElement ppveShared;
+      long int uIdentifier;
+      static int uSharedIdentifier; // [TODO] not reentrant
 
      protected:
       void notifyUpdate(PNT::SharedPointer::Notification& notification) const
          {  inherited::notifyUpdate(notification); }
 
      public:
-      SharedApproximate(PPVirtualElement shared) : ppveShared(shared) {}
-      SharedApproximate(const SharedApproximate& source) : inherited(source), ppveShared(source.ppveShared, PNT::Pointer::Duplicate()) {}
+      SharedApproximate(PPVirtualElement shared)
+         : ppveShared(shared), uIdentifier(++uSharedIdentifier) {}
+      SharedApproximate(const SharedApproximate& source)
+         : inherited(source), ppveShared(source.ppveShared, PNT::Pointer::Duplicate()),
+           uIdentifier(++uSharedIdentifier) {}
       SharedApproximate& operator=(const SharedApproximate& source)
          {  inherited::operator=(source);
             ppveShared.fullAssign(source.ppveShared);
@@ -46,6 +51,7 @@ class VirtualExactToApproximateElement : public VirtualElement {
       DDefineAssign(SharedApproximate)
 
       const VirtualElement& shared() const { return *ppveShared; }
+      long int getIdentifier() const { return uIdentifier; }
       VirtualElement& sshared() { return *ppveShared; }
       void setShared(PPVirtualElement shared) { ppveShared = shared; }
       PPVirtualElement extractShared() { return ppveShared; }
@@ -106,7 +112,7 @@ class VirtualExactToApproximateElement : public VirtualElement {
       const SharedApproximatePointer& getOrigin() const
          {  const PNT::SharedPointer* result = inherited::getOrigin();
             AssumeCondition(dynamic_cast<const SharedApproximatePointer*>(result))
-            return *(SharedApproximatePointer*) result;
+            return *(const SharedApproximatePointer*) result;
          }
 
      protected:
@@ -147,7 +153,8 @@ class VirtualExactToApproximateElement : public VirtualElement {
 
   protected:
    virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& params) const override
-      {  out.writesome("(exist ").writeHexa((int) (long int) sapDomain.key()).writesome(" in ");
+      {  out.writesome("(exist t_").write(sapDomain.isValid()
+               ? sapDomain->getIdentifier() : 0, false).writesome(" in ");
          sapDomain->shared().write(out, params);
          out.put(')');
       }
@@ -323,7 +330,7 @@ class TCompareOperationElement : public TFormalOperationElement<TypeBase> {
    virtual void _write(STG::IOObject::OSBase& out, const STG::IOObject::FormatParameters& params) const override;
 
   protected:
-   const MultiBitOperation::Type getOperationType() const
+   MultiBitOperation::Type getOperationType() const
       {  return ((const MultiBitOperation&) inherited::getOperation()).getType(); }
 
    virtual PPVirtualElement convertArgumentTopToResult(PPVirtualElement multiBitTop) const { return multiBitTop; }

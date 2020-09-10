@@ -68,7 +68,7 @@ Operation::getFloatOperation() const {
    else if ((type >= EndOfInteger) && (type < EndOfType))
       result.setTranscendental((Floating::Operation::Type) ((type - EndOfInteger) + Floating::Operation::EndOfNumeric));
    return result;
-};
+}
 
 Operation&
 Operation::setFloatOperation(const Floating::Operation& operation) {
@@ -92,7 +92,7 @@ Operation::setFloatOperation(const Floating::Operation& operation) {
    else if ((type >= Floating::Operation::EndOfNumeric) && (type < Floating::Operation::EndOfType))
       setField((Type) ((type - Floating::Operation::EndOfNumeric) + EndOfType));
    return *this;
-};
+}
 
 } // end of namespace MultiBit
 

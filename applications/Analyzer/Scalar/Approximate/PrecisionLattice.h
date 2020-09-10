@@ -36,7 +36,7 @@ class PrecisionLattice : public VirtualElement, public BaseRequirement {
 
    void _setFromDomain(const VirtualElement& concrete);
    void setDomain(PPVirtualElement domain) { ppveDomain = domain; }
-   PPVirtualElement newDomain() { return ppveDomain; }
+   PPVirtualElement extractDomain() { return ppveDomain; }
 
   public:
    Required getRequired() const { return (Required) queryRequiredField(); }

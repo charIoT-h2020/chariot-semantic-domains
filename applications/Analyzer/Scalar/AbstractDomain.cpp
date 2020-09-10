@@ -17,6 +17,7 @@
 #include "Analyzer/Scalar/Constant/ConstantElement.h"
 #include <cassert>
 #include <memory>
+#include <vector>
 
 namespace Scalar = Analyzer::Scalar::Approximate;
 namespace Constant = Analyzer::Scalar::Constant;
@@ -92,6 +93,9 @@ class ApproximateAccessEnvironment {
    Scalar::PPVirtualElement newUndefined(unsigned size, bool doesAcceptShareTop) const;
    Scalar::PPVirtualElement newFloatUndefined(int sizeExponent, int sizeMantissa, bool doesAcceptShareTop) const;
    bool isConstantValue(const Scalar::VirtualElement& value) const;
+   bool isDisjunctionOfValues(const Scalar::VirtualElement& value, int& numberOfElements) const;
+   bool applyOnDisjunctionOfValues(const Scalar::VirtualElement& value,
+         std::function<bool(uint64_t*, int)> applyFunction) const;
    void retrieveValue(const Scalar::VirtualElement& constantValue, unsigned* result, unsigned size) const;
    bool isConstantFloatValue(const Scalar::VirtualElement& value) const;
    double getConstantFloat(const Scalar::VirtualElement& constantValue) const;
@@ -484,6 +488,88 @@ ApproximateAccessEnvironment::newFloatUndefined(int sizeExponent, int sizeMantis
 bool
 ApproximateAccessEnvironment::isConstantValue(const Scalar::VirtualElement& value) const {
    return value.getApproxKind().isConstant();
+}
+
+bool
+ApproximateAccessEnvironment::isDisjunctionOfValues(const Scalar::VirtualElement& value,
+      int& numberOfElements) const {
+   auto kind = value.getApproxKind();
+   if (!kind.isConstant() && !kind.isDisjunction())
+      return false;
+   if (kind.isConstant())
+      numberOfElements = 1;
+   else {
+      AssumeCondition(dynamic_cast<const Analyzer::Scalar::Approximate::Disjunction*>(&value))
+      typedef Analyzer::Scalar::Approximate::Disjunction Disjunction;
+      numberOfElements = ((const Disjunction&) value).exacts().count()+((const Disjunction&) value).mays().count();
+   };
+   return true;
+}
+
+bool
+ApproximateAccessEnvironment::applyOnDisjunctionOfValues(const Scalar::VirtualElement& value,
+      std::function<bool(uint64_t*, int)> applyFunction) const {
+   auto kind = value.getApproxKind();
+   if (!kind.isConstant() && !kind.isDisjunction())
+      return false;
+   typedef Analyzer::Scalar::MultiBit::Approximate::TCloseConstantElement<
+      Analyzer::Scalar::MultiBit::Approximate::ConstantElement, ApproximateCastRingTraits> Result;
+   int sizeInCells = (value.getSizeInBits()+sizeof(uint64_t)-1)/sizeof(uint64_t);
+   if (sizeInCells <= 0)
+      return false;
+   static const int cellsNb = sizeof(uint64_t)/sizeof(unsigned);
+   std::vector<uint64_t> res(sizeInCells, 0);
+   if (kind.isConstant()) {
+      AssumeCondition(dynamic_cast<const Result*>(&value))
+      const auto& implementation = ((const Result&) value).implementation();
+      for (int index = sizeInCells-1; index >= 0; --index) {
+         res[index] = 0;
+         for (int i = 0; i < cellsNb; ++i) {
+            uint64_t val = (uint64_t) implementation[index*cellsNb+i];
+            val <<= (i*8*sizeof(unsigned));
+            res[index] |= val;
+         }
+      };
+      if (!applyFunction(res.data(), res.size())) return false;
+   }
+   else {
+      typedef Analyzer::Scalar::Approximate::Disjunction Disjunction;
+      {  Disjunction::ElementsList::Cursor disjunctionCursor(((const Disjunction&) value).exacts());
+         for (bool doesContinue = disjunctionCursor.setToFirst(); doesContinue; doesContinue = disjunctionCursor.setToNext()) {
+            for (auto& val : res) val = 0;
+            const auto& val = disjunctionCursor.elementAt();
+            AssumeCondition(dynamic_cast<const Result*>(&val))
+            const auto& implementation = ((const Result&) val).implementation();
+            for (int index = sizeInCells-1; index >= 0; --index) {
+               res[index] = 0;
+               for (int i = 0; i < cellsNb; ++i) {
+                  uint64_t val = (uint64_t) implementation[index*cellsNb+i];
+                  val <<= (i*8*sizeof(unsigned));
+                  res[index] |= val;
+               }
+            };
+            if (!applyFunction(res.data(), res.size())) return false;
+         };
+      };
+      {  Disjunction::ElementsList::Cursor disjunctionCursor(((const Disjunction&) value).mays());
+         for (bool doesContinue = disjunctionCursor.setToFirst(); doesContinue; doesContinue = disjunctionCursor.setToNext()) {
+            for (auto& val : res) val = 0;
+            const auto& val = disjunctionCursor.elementAt();
+            AssumeCondition(dynamic_cast<const Result*>(&val))
+            const auto& implementation = ((const Result&) val).implementation();
+            for (int index = sizeInCells-1; index >= 0; --index) {
+               res[index] = 0;
+               for (int i = 0; i < cellsNb; ++i) {
+                  uint64_t val = (uint64_t) implementation[index*cellsNb+i];
+                  val <<= (i*8*sizeof(unsigned));
+                  res[index] |= val;
+               }
+            };
+            if (!applyFunction(res.data(), res.size())) return false;
+         };
+      };
+   };
+   return true;
 }
 
 void
@@ -2175,6 +2261,32 @@ domain_multibit_is_constant_value(DomainMultiBitElement multibitDomain,
             (value->sizeInBits+8*sizeof(unsigned)-1)/(8*sizeof(unsigned)));
    }
    return true;
+}
+
+DLL_API bool
+domain_multibit_is_constant_disjunction(DomainMultiBitElement multibitDomain,
+      int* number_of_elements) {
+   const VirtualElement* element = reinterpret_cast<VirtualElement*>(multibitDomain.content);
+   AssumeCondition(element && number_of_elements)
+   ApproximateAccessEnvironment access;
+   return access.isDisjunctionOfValues(*element, *number_of_elements);
+}
+
+DLL_API bool
+domain_multibit_retrieve_constant_values(DomainMultiBitElement multibitDomain,
+      DomainIntegerConstant* result, int number_of_elements) {
+   const VirtualElement* element = reinterpret_cast<VirtualElement*>(multibitDomain.content);
+   AssumeCondition(element)
+   ApproximateAccessEnvironment access;
+   return access.applyOnDisjunctionOfValues(*element, [&result, &number_of_elements]
+         (uint64_t* value, int sizeInCell) -> bool
+      {  if (sizeInCell > 1 || number_of_elements <= 0)
+            return false;
+         result->integerValue = *value;
+         --number_of_elements;
+         ++result;
+         return true;
+      });
 }
 
 DLL_API

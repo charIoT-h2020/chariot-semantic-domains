@@ -672,7 +672,7 @@ PPVirtualElement
 TBaseElement<TypeBase, TypeDerived>::newIntegerFromBase2(long int match) const {
    if (match == 0)
       return PPVirtualElement();
-   TypeDerived& thisElement = (TypeDerived&) *this;
+   const auto& thisElement = (const TypeDerived&) *this;
 
    PPVirtualElement matchElement;
    Disjunction* disjunctionMatch = nullptr;
@@ -740,7 +740,7 @@ TBaseElement<TypeBase, TypeDerived>::queryBitDomain(const typename TypeBase::Que
    if (oldSize == 0)
       result.fixedPrefix().setSize(
          TypeDerived::inheritedImplementation::getSize()*8);
-   TypeDerived& thisElement = (TypeDerived&) *this;
+   const auto& thisElement = (const TypeDerived&) *this;
    SimulatedType value = thisElement.getElement();
    bool isNegative = TypeDerived::isNegative(value);
    int size = TypeDerived::inheritedImplementation::getSize()*8;
@@ -765,7 +765,7 @@ TBaseElement<TypeBase, TypeDerived>::queryCompareSpecial(const typename TypeBase
    typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
    typedef typename TypeBase::CompareSpecialEnvironment CompareSpecialEnvironment;
    CompareSpecialEnvironment& result = (typename TypeBase::CompareSpecialEnvironment&) env;
-   TypeDerived& thisElement = (TypeDerived&) *this;
+   const auto& thisElement = (const TypeDerived&) *this;
    SimulatedType value = thisElement.getElement();
    if (value == 0)
       result.mergeBehaviour(CompareSpecialEnvironment::BEqual0);

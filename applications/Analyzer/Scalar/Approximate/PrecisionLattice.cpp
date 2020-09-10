@@ -464,7 +464,7 @@ PrecisionLattice::apply(const VirtualOperation& aoperation, Scalar::EvaluationEn
 bool
 PrecisionLattice::mergeWith(const Scalar::VirtualElement& asource, Scalar::EvaluationEnvironment& env) {
    AssumeCondition(dynamic_cast<const PrecisionLattice*>(&asource))
-   PrecisionLattice& source = (PrecisionLattice&) asource;
+   const auto& source = (const PrecisionLattice&) asource;
    if (ppveDomain.isValid()) {
       if (source.ppveDomain.isValid())
          ppveDomain = Methods::merge(ppveDomain, *source.ppveDomain, (EvaluationEnvironment&) env);

@@ -113,7 +113,7 @@ TBaseElement<TypeBase, TypeDerived>::queryCompareSpecial(const typename TypeBase
    // typedef typename TypeDerived::inheritedImplementation::SimulatedType SimulatedType;
    typedef typename TypeBase::CompareSpecialEnvironment CompareSpecialEnvironment;
    CompareSpecialEnvironment& result = (CompareSpecialEnvironment&) aenv;
-   TypeDerived& thisElement = (TypeDerived&) *this;
+   const auto& thisElement = (const TypeDerived&) *this;
    typedef Numerics::TDoubleElement<Numerics::TFloatingBase<typename TypeDerived::ImplementationTraits> > DoubleElement;
    DoubleElement doubleElement(thisElement.getElement());
    if (doubleElement.isZero())

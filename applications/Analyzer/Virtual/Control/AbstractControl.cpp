@@ -62,7 +62,7 @@ MultiExecutionState::mergeAndAbsorb(MultiExecutionState& source, MergeParameters
 void
 MultiExecutionState::mergeAndAbsorbOrigin(MultiExecutionState& source, MergeParameters& params) {
    while (!source.isEmpty()) {
-      PNT::AutoPointer<ExecutionState> currentSource = source.extractFirst();
+      PNT::AutoPointer<ExecutionState> currentSource(&source.extractFirst(), PNT::Pointer::Init());
       if (foreachSDo([&currentSource, &params](ExecutionState& currentThis)
          {  bool result = (&currentThis.controlPoint() != &currentSource->controlPoint())
                   && !currentThis.controlPoint().isEqual(currentSource->controlPoint());

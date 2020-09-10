@@ -87,7 +87,8 @@ class TBaseElement : public TypeBase {
 
   public:
    TBaseElement(const typename TypeBase::Init& init) : inherited(init) {}
-   TBaseElement(const TBaseElement<TypeBase, TypeDerived>& source) : inherited(source) {}
+   TBaseElement(const TBaseElement<TypeBase, TypeDerived>& source) = default;
+   TBaseElement& operator=(const TBaseElement<TypeBase, TypeDerived>& source) = default;
    bool queryBound(const typename TypeBase::QueryOperation&, typename TypeBase::QueryOperation::Environment& env) const;
 
 #define DefineDeclareMethod(TypeOperation)                                                         \
@@ -148,6 +149,7 @@ class TCloseCastElement : public TypeBase {
   public:
    TCloseCastElement(const typename TypeBase::Init& init) : inherited(init) {}
    TCloseCastElement(const thisType& source) : inherited(source) {}
+   TCloseCastElement& operator=(const thisType& source) = default;
    TemplateDefineCopy(TCloseCastElement, TypeBase)
 
    typedef typename TypeBase::inheritedImplementation inheritedImplementation;

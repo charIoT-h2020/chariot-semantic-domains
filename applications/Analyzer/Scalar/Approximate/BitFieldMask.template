@@ -46,7 +46,7 @@ BitFieldMask<TypeAConstant>::MethodMergeIntersectToTable::MethodMergeIntersectTo
    DefineRegisterMethod(Top, intersectWithToUnprecise)
    DefineRegisterMethod(Unknown, intersectWithToUnprecise)
 #include "StandardClasses/DefineNew.h"
-};
+}
 
 #undef DefineRegisterMethod
 
@@ -268,7 +268,7 @@ MBitFieldMask<TypeAConstant>::MethodMergeIntersectToTable::MethodMergeIntersectT
    DefineRegisterMethod(Top, intersectWithToUnprecise)
    DefineRegisterMethod(Unknown, intersectWithToUnprecise)
 #include "StandardClasses/DefineNew.h"
-};
+}
 
 #undef DefineRegisterMethod
 

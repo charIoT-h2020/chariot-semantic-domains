@@ -92,6 +92,7 @@ class TBaseElement : public Details::TBaseElement<TypeBase, TypeDerived> {
   public:
    TBaseElement(const VirtualElement::Init& init) : inherited(init) {}
    TBaseElement(const thisType& source) = default;
+   TBaseElement& operator=(const thisType& source) = default;
   
    typedef typename inherited::Operation Operation;
    
@@ -212,9 +213,16 @@ class IntElement : public TBaseElement<BaseElement, IntElement>, protected Imple
    };
    static void setToNegative(inheritedImplementation::SimulatedType& value) { value = -value; }
    static bool isNegative(inheritedImplementation::SimulatedType value) { return value < 0; }
-   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& params) const override
-      {  out << "Int::Constant ";
-         out.write(inheritedImplementation::getElement(), false);
+   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& aparams) const override
+      {  const FormatParameters& params = (const FormatParameters&) aparams;
+         if (!params.isDeterministic()) {
+            out << "Int::Constant ";
+            out.write(inheritedImplementation::getElement(), false);
+         }
+         else {
+            out.write(inheritedImplementation::getElement(), false);
+            out.put('_').write((int) getSizeInBits(), false);
+         }
       }
 
   public:
@@ -350,9 +358,16 @@ class UnsignedIntElement : public TBaseElement<BaseElement, UnsignedIntElement>,
       MethodConstraintTable();
    };
 
-   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& params) const override
-      {  out << "UnsignedInt::Constant ";
-         out.write(inheritedImplementation::getElement(), false);
+   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& aparams) const override
+      {  const FormatParameters& params = (const FormatParameters&) aparams;
+         if (!params.isDeterministic()) {
+            out << "UnsignedInt::Constant ";
+            out.write(inheritedImplementation::getElement(), false);
+         }
+         else {
+            out.write(inheritedImplementation::getElement(), false);
+            out.put('_').write((int) getSizeInBits(), false);
+         }
       }
 
   public:
@@ -534,9 +549,16 @@ class TypeCast##Element : public TBaseElement<Details::SubElement, TypeCast##Ele
       MethodQueryTable();                                                                        \
    };                                                                                            \
                                                                                                  \
-   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& params) const override\
-      {  out << #TypeCast "Constant ";                                                           \
-         out.write((int) inheritedImplementation::getElement(), false);                          \
+   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& aparams) const override\
+      {  const FormatParameters& params = (const FormatParameters&) aparams;                     \
+         if (!params.isDeterministic()) {                                                        \
+            out << #TypeCast "Constant ";                                                        \
+            out.write((int) inheritedImplementation::getElement(), false);                       \
+         }                                                                                       \
+         else {                                                                                  \
+            out.write((int) inheritedImplementation::getElement(), false);                       \
+            out.put('_').write((int) getSizeInBits(), false);                                    \
+         }                                                                                       \
       }                                                                                          \
                                                                                                  \
   protected:                                                                                     \
@@ -669,9 +691,16 @@ class TypeCast##Element : public TBaseElement<Details::SubElement, TypeCast##Ele
    static void setToNegative(inheritedImplementation::SimulatedType& value) { CodeSetToNegative; }\
    static bool isNegative(inheritedImplementation::SimulatedType value) { return CodeIsNegative; }\
                                                                                                  \
-   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& params) const override\
-      {  out << #TypeCast "Constant ";                                                           \
-         out.write((int) inheritedImplementation::getElement(), false);                          \
+   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& aparams) const override\
+      {  const FormatParameters& params = (const FormatParameters&) aparams;                     \
+         if (!params.isDeterministic()) {                                                        \
+            out << #TypeCast "Constant ";                                                        \
+            out.write((int) inheritedImplementation::getElement(), false);                       \
+         }                                                                                       \
+         else {                                                                                  \
+            out.write((int) inheritedImplementation::getElement(), false);                       \
+            out.put('_').write((int) getSizeInBits(), false);                                    \
+         }                                                                                       \
       }                                                                                          \
                                                                                                  \
   public:                                                                                        \

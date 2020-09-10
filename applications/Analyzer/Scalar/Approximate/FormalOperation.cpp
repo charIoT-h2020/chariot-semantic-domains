@@ -1945,7 +1945,7 @@ bool
 ConcatOperationElement::querySimplification(const VirtualElement& athisElement, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
    AssumeCondition(dynamic_cast<const ConcatOperationElement*>(&athisElement)
          && dynamic_cast<const SimplificationEnvironment*>(&aenv))
-   ConcatOperationElement& thisElement = const_cast<ConcatOperationElement&>((ConcatOperationElement&) athisElement);
+   ConcatOperationElement& thisElement = const_cast<ConcatOperationElement&>((const ConcatOperationElement&) athisElement);
    ConcatenationCursor cursor(thisElement);
    cursor.setToFirst();
    const VirtualElement* previous = &cursor.elementAt();
@@ -3346,7 +3346,7 @@ ExtendOperationElement::MethodConstraintTable ExtendOperationElement::mctMethodC
 bool
 ExtendOperationElement::queryCompareSpecial(const VirtualElement& athisElement, const VirtualQueryOperation& queryOperation, VirtualQueryOperation::Environment& aenv) {
    AssumeCondition(dynamic_cast<const ExtendOperationElement*>(&athisElement))
-   ExtendOperationElement& thisElement = const_cast<ExtendOperationElement&>((ExtendOperationElement&) athisElement);
+   ExtendOperationElement& thisElement = const_cast<ExtendOperationElement&>((const ExtendOperationElement&) athisElement);
    CompareSpecialEnvironment localEnv;
    thisElement.fstArg().query(queryOperation, localEnv);
    AssumeCondition(dynamic_cast<const CompareSpecialEnvironment*>(&aenv))
@@ -3393,7 +3393,7 @@ bool
 ExtendOperationElement::querySimplification(const VirtualElement& athisElement, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
    AssumeCondition(dynamic_cast<const ExtendOperationElement*>(&athisElement)
          && dynamic_cast<const SimplificationEnvironment*>(&aenv))
-   ExtendOperationElement& thisElement = const_cast<ExtendOperationElement&>((ExtendOperationElement&) athisElement);
+   ExtendOperationElement& thisElement = const_cast<ExtendOperationElement&>((const ExtendOperationElement&) athisElement);
    bool doesContinue = true;
    while (doesContinue && thisElement.fstArg().getApproxKind().isFormalOperation()) {
       doesContinue = false;
@@ -4562,7 +4562,7 @@ MinusOperationElement::containTo(const VirtualElement& source, EvaluationEnviron
    PPVirtualElement arg = applyEnv.presult();
    if (source.getType().isVariable()) {
       AssumeCondition(dynamic_cast<const VirtualExactToApproximateElement*>(&source))
-      const VirtualExactToApproximateElement& exactSource = (VirtualExactToApproximateElement&) source;
+      const auto& exactSource = (const VirtualExactToApproximateElement&) source;
       return exactSource.domain().contain(*arg, env);
    }
    return source.contain(*arg, env);

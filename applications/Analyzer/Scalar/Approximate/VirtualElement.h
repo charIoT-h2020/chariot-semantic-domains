@@ -1651,13 +1651,13 @@ class VirtualQueryOperation::OperationEnvironment : public Environment {
 
 #define DefineTypedResult(OperationFamily)                                                      \
    OperationFamily::Operation& referenceAs##OperationFamily()                                   \
-      {  return *(Scalar::OperationFamily::Operation*) pvoReference; }                          \
+      {  return *(OperationFamily::Operation*) const_cast<VirtualOperation*>(pvoReference); }   \
                                                                                                 \
    OperationFamily::Operation& resultAs##OperationFamily()                                      \
-      {  Scalar::OperationFamily::Operation* result = (Scalar::OperationFamily::Operation*) &voResult;\
+      {  auto* result = (OperationFamily::Operation*) &voResult;                                \
          if (apvoResult.isValid()) {                                                            \
-            AssumeCondition(dynamic_cast<const Scalar::OperationFamily::Operation*>(apvoResult.key()))\
-            result = (Scalar::OperationFamily::Operation*) apvoResult.key();                    \
+            AssumeCondition(dynamic_cast<const OperationFamily::Operation*>(apvoResult.key()))  \
+            result = (OperationFamily::Operation*) const_cast<VirtualOperation*>(apvoResult.key());\
          };                                                                                     \
          return *result;                                                                        \
       }
@@ -1990,7 +1990,8 @@ class TIntAndRealElement : public VirtualElement {
 
   protected:
    TIntAndRealElement(const Init& init) : inherited(init) {}
-   TIntAndRealElement(const thisType& source) : inherited(source) {}
+   TIntAndRealElement(const thisType& source) = default;
+   TIntAndRealElement& operator=(const thisType& source) = default;
 
   public:
    static bool constraintMinAssign(VirtualElement&, const VirtualOperation&, VirtualElement& veSource, const VirtualElement& veResult, ConstraintEnvironment&);
@@ -2007,6 +2008,7 @@ class IntOperationElement : public TIntAndRealElement<IntOperationElement> {
 
   public:
    IntOperationElement(const IntOperationElement& source) = default;
+   IntOperationElement& operator=(const IntOperationElement& source) = default;
 
    virtual bool isInt() const { return true; }
    virtual bool isMultiBit() const { return true; }
@@ -2776,7 +2778,8 @@ class RealOperationElement : public TIntAndRealElement<RealOperationElement> {
 
   public:
    RealOperationElement(const InitFloat& init) : inherited(init) {}
-   RealOperationElement(const thisType& source) : inherited(source) {}
+   RealOperationElement(const thisType& source) = default;
+   RealOperationElement& operator=(const thisType& source) = default;
    virtual bool isFloat() const { return true; }
 
    class CompareSpecialEnvironment : public VirtualQueryOperation::CompareSpecialEnvironment {
@@ -3024,6 +3027,7 @@ class VirtualRealInterval : public RealOperationElement {
 
    VirtualRealInterval(const Init& init) : inherited(init) {}
    VirtualRealInterval(const VirtualRealInterval& source) : inherited(source) {}
+   VirtualRealInterval& operator=(const VirtualRealInterval& source) = default;
 };
 
 class RealOperationElement::IntervalEnvironment : public VirtualQueryOperation::DomainEnvironment {
@@ -3995,6 +3999,7 @@ class TVirtualElement : public TypeBase, public Details::BaseAlgorithms {
 
   public:
    TVirtualElement(const thisType& source) = default;
+   TVirtualElement& operator=(const thisType& source) = default;
 
    typedef Floating::Operation Operation;
    typedef typename TypeBase::QueryOperation QueryOperation;

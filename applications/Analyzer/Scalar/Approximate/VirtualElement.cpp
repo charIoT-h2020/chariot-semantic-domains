@@ -1222,7 +1222,7 @@ BitElement::queryGuardAll(const VirtualElement& element, const VirtualQueryOpera
 bool
 BaseAlgorithms::queryInverseCastOperation(const VirtualElement&, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
    QueryOperation::InverseCastOperationEnvironment& env = (QueryOperation::InverseCastOperationEnvironment&) aenv;
-   Scalar::Bit::Operation::Type type = ((Scalar::Bit::Operation&) env.reference()).getType();
+   Scalar::Bit::Operation::Type type = ((const Scalar::Bit::Operation&) env.reference()).getType();
    if ((type >= Scalar::Bit::Operation::TCastChar) && (type <= Scalar::Bit::Operation::TCastUnsignedInt))
       env.resultAsInteger().setCastBit();
    else if (type == Scalar::Bit::Operation::TCastMultiBit)
@@ -2305,7 +2305,7 @@ BaseAlgorithms::constraintModuloUnsignedAssign(VirtualElement& thisElement, cons
 bool
 BaseAlgorithms::queryInverseCastOperation(const VirtualElement& element, const VirtualQueryOperation&, VirtualQueryOperation::Environment& aenv) {
    QueryOperation::InverseCastOperationEnvironment& env = (QueryOperation::InverseCastOperationEnvironment&) aenv;
-   switch (((Operation&) env.reference()).getType()) {
+   switch (((const Operation&) env.reference()).getType()) {
       case Operation::TCastChar: case Operation::TCastInt: case Operation::TCastUnsignedInt:
          {  Scalar::Integer::CastMultiBitOperation* result = new Scalar::Integer::CastMultiBitOperation();
             env.absorbResult(result);

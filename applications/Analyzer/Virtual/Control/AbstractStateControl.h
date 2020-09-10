@@ -150,7 +150,7 @@ class AbstractState : public STG::IOObject {
      public:
       InterpretParameters() {}
       InterpretParameters(const Direction& direction) : Direction(direction) {}
-      InterpretParameters(const InterpretParameters& source) : Direction(source) {}
+      InterpretParameters(const InterpretParameters& source) = default;
       DefineCopy(InterpretParameters)
       DDefineAssign(InterpretParameters)
       
@@ -164,7 +164,8 @@ class AbstractState : public STG::IOObject {
 
   public:
    AbstractState() {}
-   AbstractState(const AbstractState& source) : inherited(source) {}
+   AbstractState(const AbstractState& source) = default;
+   AbstractState& operator=(const AbstractState& source) = default;
    DefineCopy(AbstractState)
 
    virtual bool _mergeWith(AbstractState& source, MergeParameters& params) { return false; }

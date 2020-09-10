@@ -190,10 +190,19 @@ class TConstantElement : public Base, protected TypeImplementation {
       {  return (VirtualElement&) env.getFirstArgument(); }
 
   protected:
-   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& params) const override
-      {  out << "MultiBit::Constant 0x";
-         implementation().write(out, typename inheritedImplementation::FormatParameters()
-            .setFullHexaDecimal(inheritedImplementation::getSize()));
+   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& aparams) const override
+      {  const FormatParameters& params = (const FormatParameters&) aparams;
+         if (!params.isDeterministic()) {
+            out << "MultiBit::Constant 0x";
+            implementation().write(out, typename inheritedImplementation::FormatParameters()
+               .setFullHexaDecimal(inheritedImplementation::getSize()));
+         }
+         else {
+            out << "0x";
+            implementation().write(out, typename inheritedImplementation::FormatParameters()
+               .setFullHexaDecimal(inheritedImplementation::getSize()));
+            out.put('_').write((int) getSizeInBits(), false);
+         }
       }
    virtual ComparisonResult _compare(const EnhancedObject& asource) const override
       {  ComparisonResult result = inherited::_compare(asource);

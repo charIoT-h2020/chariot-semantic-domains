@@ -132,7 +132,8 @@ class PPVirtualElement : public VirtualElement::PPVirtualElement {
    PPVirtualElement(int value) : inherited(VirtualElement::createIntElement(value), Init()) {}
    PPVirtualElement(const VirtualElement& element) : inherited(element) {}
    PPVirtualElement(VirtualElement* element, inherited::Init init) : inherited(element, init) {}
-   PPVirtualElement(const PPVirtualElement& source) : inherited(source) {}
+   PPVirtualElement(const PPVirtualElement& source) = default;
+   PPVirtualElement& operator=(const PPVirtualElement& source) = default;
    PPVirtualElement(const PPVirtualElement& source, inherited::Duplicate duplicate) : inherited(source, duplicate) {}
    DefineCopy(PPVirtualElement)
 

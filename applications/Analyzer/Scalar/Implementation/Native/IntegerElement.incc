@@ -74,6 +74,8 @@ DefineTypeIntegerElement::apply(const NextAssignOperation&, EvaluationEnvironmen
 void
 DefineTypeIntegerElement::apply(const PlusAssignOperation&,
    const DefineTypeIntegerElement& source, EvaluationEnvironment& env) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
 #ifndef DefineTypeNeedBytes
    uElement += source.uElement;
    if (uElement > DefineTypeMax)
@@ -101,11 +103,14 @@ DefineTypeIntegerElement::apply(const PlusAssignOperation&,
    uElement = ((DefineTypeRealImplementation) uElement)
       + ((DefineTypeRealImplementation) source.uElement);
 #endif // DefineTypeNeedBytes
+#pragma GCC diagnostic pop
 }
 
 void
 DefineTypeIntegerElement::apply(const MinusAssignOperation&,
    const DefineTypeIntegerElement& source, EvaluationEnvironment& env) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
 #ifndef DefineTypeNeedBytes
    uElement -= source.uElement;
    if (uElement > DefineTypeMax)
@@ -147,6 +152,7 @@ DefineTypeIntegerElement::apply(const MinusAssignOperation&,
    uElement = ((DefineTypeRealImplementation) uElement)
       - ((DefineTypeRealImplementation) source.uElement);
 #endif // DefineTypeNeedBytes
+#pragma GCC diagnostic pop
 }
 
 void
@@ -168,6 +174,8 @@ DefineTypeIntegerElement::apply(const OppositeAssignOperation&, EvaluationEnviro
 void
 DefineTypeIntegerElement::apply(const TimesAssignOperation&,
    const DefineTypeIntegerElement& source, EvaluationEnvironment& env) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
 #ifndef DefineTypeNeedBytes
    uElement *= source.uElement;
    if (uElement > DefineTypeMax)
@@ -274,6 +282,7 @@ DefineTypeIntegerElement::apply(const TimesAssignOperation&,
 #endif // __clang__
 
 #endif // DefineTypeNeedBytes
+#pragma GCC diagnostic pop
 }
 
 void
@@ -284,6 +293,8 @@ DefineTypeIntegerElement::apply(const DivideAssignOperation&,
       env.setEmpty();
       return;
    };
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
 #if (!defined(DefineTypeNeedBytes) || defined(DefineTypeUnsigned))
    uElement /= source.uElement;
    if (uElement > DefineTypeMax)
@@ -304,6 +315,7 @@ DefineTypeIntegerElement::apply(const DivideAssignOperation&,
    uElement = ((DefineTypeRealImplementation) uElement)
       / ((DefineTypeRealImplementation) source.uElement);
 #endif // DefineTypeNeedBytes || DefineTypeUnsigned
+#pragma GCC diagnostic pop
 }
 
 void
@@ -314,6 +326,8 @@ DefineTypeIntegerElement::apply(const ModuloAssignOperation&,
       env.setEmpty();
       return;
    };
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
 #if (!defined(DefineTypeNeedBytes) || defined(DefineTypeUnsigned))
    uElement %= source.uElement;
    if (uElement > DefineTypeMax)
@@ -334,6 +348,7 @@ DefineTypeIntegerElement::apply(const ModuloAssignOperation&,
    uElement = ((DefineTypeRealImplementation) uElement)
       % ((DefineTypeRealImplementation) source.uElement);
 #endif // DefineTypeNeedBytes || DefineTypeUnsigned
+#pragma GCC diagnostic pop
 }
 
 // integer methods

@@ -96,8 +96,13 @@ class ConstantElement : public TVirtualElement<Details::BitElement> {
       {  return (VirtualElement&) env.getFirstArgument(); }
    
   protected:
-   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& params) const override
-      {  out << "Bit::Constant " << (fValue ? "true" : "false"); }
+   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& aparams) const override
+      {  const FormatParameters& params = (const FormatParameters&) aparams;
+         if (!params.isDeterministic())
+            out << "Bit::Constant " << (fValue ? "true" : "false");
+         else
+            out.put(fValue ? '1' : '0').put('b');
+      }
    virtual ComparisonResult _compare(const EnhancedObject& asource) const override
       {  ComparisonResult result = inherited::_compare(asource);
          if (result == CREqual) {

@@ -554,31 +554,47 @@ class Disjunction::QuerySpecializeApplication {
 void
 Disjunction::_write(OSBase& out, const STG::IOObject::FormatParameters& aparams) const {
    const FormatParameters& params = (const FormatParameters&) aparams;
-   std::function<bool (const VirtualElement&)> writeAction = [&out, &params](const VirtualElement& source)
-      {  out.put(' ');
+   bool isFirst = true;
+   std::function<bool (const VirtualElement&)> writeAction = [&out, &params, &isFirst]
+      (const VirtualElement& source)
+      {  if (!params.isDeterministic())
+            out.put(' ');
+         else if (!isFirst)
+            out.put(',').put(' ');
+         else
+            isFirst = false;
          source.write(out, params);
          return true;
       };
-   out << "Disjunction(";
-   if (!params.isOneLine())
-      out << "\n\t\t\t\t";
-   out << "May: ";
-   selMayElements.foreachDo(writeAction);
-   if (!params.isOneLine())
-      out << "\n\t\t\t\t";
-   else
-      out.put(' ');
-   out << "Exact: ";
-   selExactElements.foreachDo(writeAction);
-   if (!params.isOneLine())
-      out << "\n\t\t\t\t";
-   else
-      out.put(' ');
-   out << "Sure: ";
-   selSureElements.foreachDo(writeAction);
-   if (!params.isOneLine())
-      out << "\n\t\t\t\t";
-   out.put(')');
+   if (!params.isDeterministic()) {
+      out << "Disjunction(";
+      if (!params.isOneLine())
+         out << "\n\t\t\t\t";
+      out << "May: ";
+      selMayElements.foreachDo(writeAction);
+      if (!params.isOneLine())
+         out << "\n\t\t\t\t";
+      else
+         out.put(' ');
+      out << "Exact: ";
+      selExactElements.foreachDo(writeAction);
+      if (!params.isOneLine())
+         out << "\n\t\t\t\t";
+      else
+         out.put(' ');
+      out << "Sure: ";
+      selSureElements.foreachDo(writeAction);
+      if (!params.isOneLine())
+         out << "\n\t\t\t\t";
+      out.put(')');
+   }
+   else {
+      out.put('{').put(' ');
+      isFirst = true;
+      selExactElements.foreachDo(writeAction);
+      selMayElements.foreachDo(writeAction);
+      out.put(' ').put('}');
+   }
 }
 
 /* Definition of the apply methods */

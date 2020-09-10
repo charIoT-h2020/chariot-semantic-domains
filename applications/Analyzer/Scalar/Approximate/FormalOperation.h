@@ -194,7 +194,8 @@ class BaseOperationElement : public TFormalOperationElement<Approximate::Details
 
   public:
    BaseOperationElement(const Init& init) : inherited(init) {}
-   BaseOperationElement(const BaseOperationElement& source) : inherited(source) {}
+   BaseOperationElement(const BaseOperationElement& source) = default;
+   BaseOperationElement& operator=(const BaseOperationElement& source) = default;
 
    virtual bool query(const VirtualQueryOperation& operation, VirtualQueryOperation::Environment& env) const
       {  bool result = Approximate::Details::IntOperationElement::query(operation, env);
@@ -504,7 +505,7 @@ class ExtendOperationElement : public BaseOperationElement {
       {  out.write(getOperation().getExtension(), params.isRaw());
          out << "<-";
          if (getOperation().getType() == Operation::TExtendWithSign)
-            out.put('s');
+            out.put('S');
          out.put('[');
          fstArg().write(out, params);
          out.put(']');
@@ -681,6 +682,7 @@ class ExtendOperationElement : public BaseOperationElement {
          };
       }
    ExtendOperationElement(const ExtendOperationElement& source) = default;
+   ExtendOperationElement& operator=(const ExtendOperationElement& source) = default;
    DefineCopy(ExtendOperationElement)
    DDefineAssign(ExtendOperationElement)
    virtual bool isValid() const override
@@ -802,9 +804,9 @@ class MinusOperationElement : public BaseOperationElement {
          fstArg().write(out, params);
          out << " -";
          if (((const Operation&) getOperation()).getType() == Operation::TMinusSignedAssign)
-            out << "signed ";
+            out << "S ";
          else
-            out << "unsigned ";
+            out << "U ";
          sndArg().write(out, params);
          out.put(')');
       }

@@ -48,6 +48,7 @@ class BaseElement : public TVirtualElement<Details::RealOperationElement> {
    typedef InitFloat Init;
    BaseElement(const InitFloat& init) : inherited(init) {}
    BaseElement(const BaseElement& source) = default;
+   BaseElement& operator=(const BaseElement& source) = default;
    typedef Floating::Operation Operation;
    typedef Approximate::Interval Interval;
    
@@ -99,6 +100,7 @@ class TBaseElement : public Details::TBaseElement<TypeBase, TypeDerived> {
   public:
    TBaseElement(const typename TypeBase::Init& init) : inherited(init) {}
    TBaseElement(const thisType& source) = default;
+   TBaseElement& operator=(const thisType& source) = default;
   
 #define DefineDeclareMethod(TypeOperation)                                                        \
 bool apply##TypeOperation(const VirtualOperation& operation, EvaluationEnvironment& env);
@@ -226,9 +228,16 @@ class TypeCast##Element : public TBaseElement<BaseElement, TypeCast##Element>, p
       MethodQueryTable();                                                                        \
    };                                                                                            \
                                                                                                  \
-   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& params) const override\
-      {  out << #TypeCast "Constant ";                                                           \
-         out.write((double) inheritedImplementation::getElement(), false);                       \
+   virtual void _write(OSBase& out, const STG::IOObject::FormatParameters& aparams) const override\
+      {  const FormatParameters& params = (const FormatParameters&) aparams;                     \
+         if (!params.isDeterministic()) {                                                        \
+            out << #TypeCast "Constant ";                                                        \
+            out.write((double) inheritedImplementation::getElement(), false);                    \
+         }                                                                                       \
+         else {                                                                                  \
+            out.write((double) inheritedImplementation::getElement(), false);                    \
+            out.put('_').write((int) getSizeInBits(), false);                                    \
+         }                                                                                       \
       }                                                                                          \
                                                                                                  \
   protected:                                                                                     \

@@ -239,7 +239,8 @@ class AbstractState : public STG::IOObject {
       
      public:
       InterpretParameters() {}
-      InterpretParameters(const InterpretParameters& source) : inherited(source) {}
+      InterpretParameters(const InterpretParameters& source) = default;
+      InterpretParameters& operator=(const InterpretParameters& source) = default;
       typedef AbstractState::MergeParameters MergeParameters;
       MergeParameters& mergeParameters() { return (MergeParameters&) getMergeParameters(); }
    };
