@@ -514,7 +514,7 @@ ApproximateAccessEnvironment::applyOnDisjunctionOfValues(const Scalar::VirtualEl
       return false;
    typedef Analyzer::Scalar::MultiBit::Approximate::TCloseConstantElement<
       Analyzer::Scalar::MultiBit::Approximate::ConstantElement, ApproximateCastRingTraits> Result;
-   int sizeInCells = (value.getSizeInBits()+sizeof(uint64_t)-1)/sizeof(uint64_t);
+   int sizeInCells = (value.getSizeInBits()+8*sizeof(uint64_t)-1)/(8*sizeof(uint64_t));
    if (sizeInCells <= 0)
       return false;
    static const int cellsNb = sizeof(uint64_t)/sizeof(unsigned);
